@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Node (only needed for the build step)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Local scratch
+*.log
+tmp/
+.cache/
+
+# Build output is committed on purpose: dist/index.html is the deliverable
+# so the app can be opened straight from a clone with no toolchain.
