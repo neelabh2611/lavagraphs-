@@ -1,0 +1,9 @@
+# Netlify: publish the repo root, no build step. index.html is committed.
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"

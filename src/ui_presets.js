@@ -702,17 +702,31 @@ function presetTier(s){
    edit. Anything the user sets by hand afterwards is untouched.
    ========================================================================= */
 
+/* Caps are deliberately tighter than "the glyphs are still technically
+   recognisable". Past these values the type stops reading at a glance, and a
+   preset that you cannot read a word from is not a typography preset. Anything
+   the user drags past these limits by hand is left alone — this only governs
+   what a preset is allowed to set. */
 const LEGIBILITY_CAPS = {
-  distortion: 0.72,      /* beyond this the glyph structure dissolves */
-  textWarpX:   0.55,
-  textWarpY:   0.48,
-  fragment:    0.55,
-  chromaSplit: 0.95,
-  textBlur:    0.34,
-  textJitter:  0.10,
-  spiral:      0.55,
-  meltRise:    0.65,
+  distortion:   0.55,   /* glyph structure starts dissolving past this */
+  textWarpX:    0.42,
+  textWarpY:    0.34,
+  fragment:     0.38,
+  chromaSplit:  0.70,
+  textBlur:     0.24,
+  textJitter:   0.06,
+  spiral:       0.40,
+  meltRise:     0.45,
+  elastic:      0.55,
+  perspective:  0.40,
+  charAnim:     0.45,
+  lineStagger:  0.45,
+  feedback:     0.75,   /* feedback smears the type if it goes higher */
+  scanline:     0.55,
+  posterize:    0.35,
 };
+
+function clampNum(v, lo, hi){ return v < lo ? lo : v > hi ? hi : v; }
 
 function applyLegibilityEnvelope(out){
   for (const k in LEGIBILITY_CAPS){
@@ -723,5 +737,15 @@ function applyLegibilityEnvelope(out){
   /* Every preset keeps a visible contour — this is what guarantees the type
      can be read over both the black negative space and the pale liquid. */
   if (out.textOutline === undefined) out.textOutline = 0.55;
+  else out.textOutline = Math.max(out.textOutline, 0.45);
+
+  /* Keep enough tonal separation between the ink and the liquid behind it.
+     A preset that drives contrast to 1.8 renders the type into mush. */
+  if (typeof out.contrast === 'number') out.contrast = clampNum(out.contrast, 0.8, 1.45);
+  if (typeof out.saturation === 'number') out.saturation = clampNum(out.saturation, 0, 1.6);
+
+  /* Type opacity below ~70% stops the glyph reading as a solid form. */
+  if (typeof out.textOpacity === 'number') out.textOpacity = Math.max(out.textOpacity, 0.85);
+
   return out;
 }
