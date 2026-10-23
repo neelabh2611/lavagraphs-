@@ -574,7 +574,7 @@ const DEFAULTS = {
   fontSize: 240,
   fontWeight: 800,
   tracking: -0.035,
-  leading: 0.98,
+  leading: 1.00,
   align: 'center',
   textWidth: 94,
   textScale: 1.00,
@@ -585,7 +585,7 @@ const DEFAULTS = {
   textOpacity: 1,
   autoFit: true,
   packed: true,
-  packedAmount: 0.10,
+  packedAmount: 0.04,
   justify: true,
   crop: 0.06,
 
@@ -1485,9 +1485,9 @@ void main(){
 
   /* line stagger: each text line animates on its own phase */
   if(uLineStagger > 0.001){
-    float band = floor(tuv.y*7.0);
-    tuv.x += sin(A*2.0 + band*1.7) * uLineStagger * 0.022;
-    tuv.y += sin(A*1.5 + band*2.3) * uLineStagger * 0.012;
+    float staggerBand = floor(tuv.y*7.0);
+    tuv.x += sin(A*2.0 + staggerBand*1.7) * uLineStagger * 0.022;
+    tuv.y += sin(A*1.5 + staggerBand*2.3) * uLineStagger * 0.012;
   }
 
   /* character wave: high-frequency horizontal ripple across the raster */
@@ -1644,12 +1644,12 @@ void main(){
   float g2 = textAt(tuv + vec2(-oe, 0.0), lodBase);
   float g3 = textAt(tuv + vec2(0.0,  oe), lodBase);
   float g4 = textAt(tuv + vec2(0.0, -oe), lodBase);
-  float ring = clamp(max(max(g1,g2),max(g3,g4)) - ta, 0.0, 1.0) * uTextOutline;
+  float outlineRing = clamp(max(max(g1,g2),max(g3,g4)) - ta, 0.0, 1.0) * uTextOutline;
 
   /* the outline colour is the inverse of the type colour, so contrast is
      guaranteed rather than hoped for */
   vec3 outlineCol = mix(vec3(0.015, 0.008, 0.020), vec3(0.97), isDark);
-  col = mix(col, outlineCol, clamp(ring, 0.0, 1.0)*0.92);
+  col = mix(col, outlineCol, clamp(outlineRing, 0.0, 1.0)*0.92);
 
   if(isDark < 0.5){
     /* dark type carves into the liquid: the glyph reads as a hole punched

@@ -16,7 +16,8 @@ const path = require('path');
 
 const dir = __dirname;
 const tplPath = path.join(dir, 'template.html');
-const outPath = path.join(dir, '..', 'dist', 'index.html');
+const outDist = path.join(dir, '..', 'dist', 'index.html');
+const outRoot = path.join(dir, '..', 'index.html');   // GitHub Pages entry point
 
 const UI_MODULES = ['ui.js', 'ui_presets.js', 'ui_data.js', 'ui_party.js', 'ui_audio.js'];
 
@@ -36,5 +37,8 @@ if (!html.includes('/*~~CORE~~*/') || !html.includes('/*~~UI~~*/')){
 html = html.replace('/*~~CORE~~*/', () => '\n(function(){\n' + core + '\n})();\n');
 html = html.replace('/*~~UI~~*/', () => '\n(function(){\n' + ui + '\n})();\n');
 
-fs.writeFileSync(outPath, html);
-console.log('built dist/index.html  ' + (html.length/1024).toFixed(1) + ' KB');
+/* written twice on purpose: dist/ for the tidy artefact, root index.html so
+   GitHub Pages can serve the repo as-is without a build step */
+fs.writeFileSync(outDist, html);
+fs.writeFileSync(outRoot, html);
+console.log('built index.html + dist/index.html  ' + (html.length/1024).toFixed(1) + ' KB');
