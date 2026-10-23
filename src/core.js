@@ -21,7 +21,7 @@ const DEFAULTS = {
   textRotate: 0,
   textX: 0,
   textY: -2,
-  textColor: '#04010a',
+  textColor: '#f4f0f6',
   textOpacity: 1,
   autoFit: true,
   packed: true,
@@ -134,6 +134,7 @@ const DEFAULTS = {
   extrude: 0.0, neonOutline: 0.0, lineStagger: 0.0, charAnim: 0.0,
   elastic: 0.0, fragment: 0.0, perspective: 0.0, spiral: 0.0,
   // rhythm
+  audioReactive: false,
   rhythmMode: 'off',   // off | manual | audio | mic
   bpm: 128, beatSub: 4, audioSens: 0.8, audioSmooth: 0.72, audioOffset: 0,
   bassAmt: 0.7, midAmt: 0.5, trebleAmt: 0.45, beatAmt: 0.8,
@@ -1055,7 +1056,11 @@ void main(){
     /* chrome type: dark glyphs still catch a bright specular rim */
     col += mix(uColPale, uColAccent, 0.35) * band * uExtrude * 0.55;
   } else {
-    col = mix(col, tc*(0.85 + uGlowI*0.5), clamp(ta,0.0,1.0));
+    /* light type: a dark contour keeps it legible where it crosses the pale
+       liquid cores, then the type colour itself paints on top */
+    float contour = clamp(tg - ta, 0.0, 1.0);
+    col *= 1.0 - contour*0.55;
+    col = mix(col, tc*(0.9 + uGlowI*0.28), clamp(ta,0.0,1.0));
   }
 
   /* fragmented slices get a hot leading edge so they read as torn */
@@ -2155,6 +2160,12 @@ const Beat = (() => {
   let bassAvg = 0.2;
 
   function tick(t, phase, playing_){
+    /* master switch: no audio influence at all when it is off */
+    if (!state.audioReactive){
+      env = 0; bass = mid = treble = level = 0;
+      bassS = midS = trebleS = levelS = 0;
+      return;
+    }
     if (mode === 'manual' || mode === 'off'){
       /* derive a beat clock from BPM so visuals still pulse without audio */
       const bpm = Math.max(30, +state.bpm || 128);

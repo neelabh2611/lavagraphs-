@@ -35,7 +35,9 @@ function buildAudioPane(){
     mkSrc('mic', 'MICROPHONE', 'room audio', async () => {
       try {
         await Beat.useMic();
+        set('audioReactive', true);
         set('rhythmMode', 'mic');
+        syncModes();
         toast('MICROPHONE LIVE');
       } catch(e){
         const m = String(e && e.name || '');
@@ -55,6 +57,8 @@ function buildAudioPane(){
   stopRow.addEventListener('click', () => {
     Beat.stop();
     set('rhythmMode', 'off');
+    set('audioReactive', false);
+    syncModes();
     toast('AUDIO RELEASED');
   });
   s.body.appendChild(stopRow);
@@ -295,4 +299,5 @@ function paintAudioUI(now){
 
   paintScope();
   paintMeters();
+  syncModes();
 }

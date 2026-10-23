@@ -24,7 +24,7 @@ function buildTrancePane(){
         Math.round(state.tranceIntensity*100) + '%'
       : 'DISABLED · CLICK TO ENGAGE';
   };
-  tg.addEventListener('click', () => { set('trance', !state.trance); paintTg(); });
+  tg.addEventListener('click', () => { set('trance', !state.trance); paintTg(); syncModes(); });
   syncers.push(paintTg); paintTg();
 
   s.body.appendChild(mkSlider('Intensity', 'tranceIntensity', 0, 1, 0.01, pct));
@@ -137,7 +137,7 @@ function buildPartyPane(){
         ' · CHAOS ' + Math.round(state.chaos*100)
       : 'DISABLED · MACROS BYPASSED';
   };
-  tg.addEventListener('click', () => { set('party', !state.party); paintTg(); });
+  tg.addEventListener('click', () => { set('party', !state.party); paintTg(); syncModes(); });
   syncers.push(paintTg); paintTg();
 
   const insane = document.createElement('button');

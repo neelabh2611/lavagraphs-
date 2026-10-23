@@ -168,7 +168,7 @@ function mkSeg(label, key, opts){
   const wrap = document.createElement('div');
   if (label){
     const l = document.createElement('div');
-    l.style.cssText = 'font:400 9.5px/1 var(--mono);color:var(--dim);margin-bottom:5px;letter-spacing:.02em';
+    l.style.cssText = 'font:400 11.5px/1 var(--mono);color:var(--dim);margin-bottom:5px;letter-spacing:.02em';
     l.textContent = label;
     wrap.appendChild(l);
   }
@@ -223,7 +223,7 @@ function section(title, open, count){
 }
 function subLabel(txt){
   const d = document.createElement('div');
-  d.style.cssText = 'font:400 8px/1 var(--mono);letter-spacing:.16em;color:#3d3d47;text-transform:uppercase;margin:11px 0 7px;display:flex;align-items:center;gap:7px';
+  d.style.cssText = 'font:400 11px/1 var(--mono);letter-spacing:.16em;color:#75758a;text-transform:uppercase;margin:11px 0 7px;display:flex;align-items:center;gap:7px';
   d.innerHTML = '<span>'+txt+'</span><span style="flex:1;height:1px;background:#191920"></span>';
   return d;
 }
@@ -244,7 +244,7 @@ function buildTypePane(){
   s.body.appendChild(ta);
 
   const meta = document.createElement('div');
-  meta.style.cssText = 'display:flex;justify-content:space-between;font:400 8px/1 var(--mono);color:#3d3d47;letter-spacing:.1em;margin-top:6px;text-transform:uppercase';
+  meta.style.cssText = 'display:flex;justify-content:space-between;font:400 11px/1 var(--mono);color:#75758a;letter-spacing:.1em;margin-top:6px;text-transform:uppercase';
   meta.innerHTML = '<span id="lineCount"></span><span id="charCount"></span>';
   s.body.appendChild(meta);
   const paintMeta = () => {
@@ -491,9 +491,9 @@ function buildCompPane(){
   customRow.className = 'row';
   customRow.innerHTML = '<label>Custom ratio</label>';
   const cw = document.createElement('input'); cw.className = 'num'; cw.type='number'; cw.min='0.2'; cw.max='5'; cw.step='0.05'; cw.value = state.customW; cw.style.width='42px';
-  const x = document.createElement('span'); x.textContent=':'; x.style.cssText='color:#43434e;font:400 10px var(--mono)';
+  const x = document.createElement('span'); x.textContent=':'; x.style.cssText='color:#75758a;font:400 12px var(--mono)';
   const chh = document.createElement('input'); chh.className='num'; chh.type='number'; chh.min='0.2'; chh.max='5'; chh.step='0.05'; chh.value = state.customH; chh.style.width='42px';
-  const ap = document.createElement('button'); ap.className='btn'; ap.style.cssText='padding:3px 7px;font-size:8px'; ap.textContent='APPLY';
+  const ap = document.createElement('button'); ap.className='btn'; ap.style.cssText='padding:3px 7px;font-size:11px'; ap.textContent='APPLY';
   ap.addEventListener('click', () => {
     setMany({ customW: clamp(+cw.value||3,0.2,5), customH: clamp(+chh.value||4,0.2,5), aspect:'custom' });
     syncAll();
@@ -694,7 +694,7 @@ function mSelect(opts){
 }
 function mCheck(label, checked){
   const wrap = document.createElement('label');
-  wrap.style.cssText = 'display:flex;align-items:center;gap:6px;font:400 9.5px/1 var(--mono);color:var(--dim);margin:4px 0 2px;cursor:pointer';
+  wrap.style.cssText = 'display:flex;align-items:center;gap:6px;font:400 11.5px/1 var(--mono);color:var(--dim);margin:4px 0 2px;cursor:pointer';
   const cb = document.createElement('input');
   cb.type = 'checkbox'; cb.checked = !!checked;
   cb.style.accentColor = '#ff2233';
@@ -1121,6 +1121,33 @@ const Stage = (() => {
 })();
 
 /* ================================================================ CHROME */
+/* The three master switches live in the topbar so they are always reachable.
+   Each one has a real rendering consequence:
+     TRANCE  -> gates the post-processing stack (postOn)
+     PARTY   -> enables the macro multipliers on every low-level parameter
+     AUDIO   -> enables the audio->visual modulation and starts capture       */
+function syncModes(){
+  const tr = document.getElementById('mTrance');
+  const pa = document.getElementById('mParty');
+  const au = document.getElementById('mAudio');
+  if (tr) tr.classList.toggle('on', !!state.trance);
+  if (pa) pa.classList.toggle('on', !!state.party);
+  if (au){
+    const live = state.audioReactive && Beat.mode !== 'off';
+    au.classList.toggle('on', !!state.audioReactive);
+    au.classList.toggle('listening', live);
+    const label = au.querySelector('span');
+    if (label){
+      label.textContent = state.audioReactive
+        ? (Beat.mode === 'mic' ? 'MIC LIVE'
+          : Beat.mode === 'tab' ? 'TAB LIVE'
+          : Beat.mode === 'audio' ? 'FILE LIVE'
+          : 'AUDIO ON')
+        : 'AUDIO';
+    }
+  }
+}
+
 function syncChrome(){
   const playing = !Animation.paused;
   const icon = playing
@@ -1135,6 +1162,8 @@ function syncChrome(){
   $q('#stage').classList.toggle('grid', state.showGrid);
   $q('#guides').classList.toggle('on', state.showGuides);
   document.body.classList.toggle('present', state.present);
+
+  syncModes();
 
   $q('#qualitySel').value = String(state.quality);
   $q('#loopDur').value = state.loopDuration;
@@ -1152,6 +1181,42 @@ function wireChrome(){
   $q('#projName').addEventListener('input', e => {
     state.projectName = e.target.value;
     document.title = (e.target.value || 'Untitled') + ' — LAVA TYPE';
+  });
+
+  /* ---------- master mode switches ---------- */
+  $q('#mTrance').addEventListener('click', () => {
+    set('trance', !state.trance);
+    syncModes();
+    toast(state.trance ? 'TRANCE MODE ON — ' + tranceActiveCount() + ' EFFECTS' : 'TRANCE MODE OFF');
+  });
+
+  $q('#mParty').addEventListener('click', () => {
+    set('party', !state.party);
+    syncModes();
+    toast(state.party
+      ? 'PARTY MODE ON — MACROS LIVE'
+      : 'PARTY MODE OFF — RAW PARAMETERS');
+  });
+
+  $q('#mAudio').addEventListener('click', async () => {
+    if (state.audioReactive){
+      set('audioReactive', false);
+      Beat.stop();
+      set('rhythmMode', 'off');
+      syncModes();
+      toast('AUDIO REACTIVITY OFF');
+      return;
+    }
+    set('audioReactive', true);
+    /* if no source is running yet, start the manual clock immediately so the
+       switch does something visible without demanding a permission prompt */
+    if (Beat.mode === 'off'){
+      set('rhythmMode', 'manual');
+      toast('AUDIO REACTIVITY ON — MANUAL CLOCK · CHOOSE AN INPUT IN THE AUDIO TAB', 3600);
+    } else {
+      toast('AUDIO REACTIVITY ON');
+    }
+    syncModes();
   });
 
   $q('#btnPlay').addEventListener('click', togglePlay);
@@ -1249,6 +1314,9 @@ function wireChrome(){
     if (k === ' ') { e.preventDefault(); togglePlay(); }
     else if (k === 'p' && e.shiftKey) { Animation.paused = true; syncChrome(); toast('FROZEN'); }
     else if (k === 'r') { Animation.restart(); paintTimeline(); }
+    else if (k === 't') { $q('#mTrance').click(); }
+    else if (k === 'y') { $q('#mParty').click(); }
+    else if (k === 'u') { $q('#mAudio').click(); }
     else if (k === 'g') { set('showGrid', !state.showGrid); }
     else if (k === "'") { set('showGuides', !state.showGuides); }
     else if (k === 'h') { set('present', !state.present); setTimeout(()=>Stage.relayout(),60); }
@@ -1327,7 +1395,9 @@ function wireChrome(){
     if (!f) return;
     try {
       const dur = await Beat.loadFile(f);
+      set('audioReactive', true);
       set('rhythmMode', 'audio');
+      syncModes();
       set('loopDuration', Math.max(2, Math.min(30, Math.round(dur))));
       toast('AUDIO LOADED — ' + dur.toFixed(1) + 's · ANALYSING', 3000);
     } catch(err){
@@ -1350,7 +1420,9 @@ function wireChrome(){
       /* video track is only there because getDisplayMedia requires it */
       stream.getVideoTracks().forEach(t => t.stop());
       await Beat.useStream(new MediaStream([audioTrack]));
+      set('audioReactive', true);
       set('rhythmMode', 'tab');
+      syncModes();
       toast('TAB AUDIO CAPTURED', 3000);
     } catch(err){
       toast('CAPTURE FAILED — ' + String(err.message||'').slice(0,42).toUpperCase(), 4200);
