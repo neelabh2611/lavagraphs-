@@ -137,8 +137,8 @@ const DEFAULTS = {
   // rhythm
   audioReactive: false,
   rhythmMode: 'off',   // off | manual | audio | mic
-  bpm: 128, beatSub: 4, audioSens: 0.8, audioSmooth: 0.72, audioOffset: 0,
-  bassAmt: 0.7, midAmt: 0.5, trebleAmt: 0.45, beatAmt: 0.8,
+  bpm: 128, beatSub: 4, audioSens: 1.0, audioSmooth: 0.42, audioOffset: 0,
+  bassAmt: 0.85, midAmt: 0.70, trebleAmt: 0.65, beatAmt: 0.90,
   /* ---------------- CURSOR INTERACTION ---------------- */
   cursorOn: true,
   cursorPreset: 'liquid',
@@ -163,7 +163,7 @@ const DEFAULTS = {
   paintPersist: false,
   cursorPortalDepth: 0.6,
   cursorPortalRot: 0.2,
-  impactStrength: 0.6,
+  impactStrength: 0.8,
   buildLength: 0.5,
   fallbackMotion: true,
 
@@ -1770,15 +1770,27 @@ void main(){
     gl.uniform2f(U(P.field,'uRes'), rt.field.w, rt.field.h);
     gl.uniform1f(U(P.field,'uAspect'), aspect);
     const MX = macros();
-    const bk = 1 + MX.beat*state.bassAmt*Beat.value*0.55;
-    gl.uniform1f(U(P.field,'uBlobSize'), state.blobSize*0.62*MX.liquidity*(1+MX.beat*state.bassAmt*Beat.value*0.16));
+    /* ---- AUDIO BUS ----
+       One coherent set of values, derived from the analyser, consumed by every
+       pass below. Scaled by the per-feature mapping amounts so the user can
+       dial each relationship independently. */
+    const A = {
+      kick:  clamp(Beat.value * state.beatAmt * state.beatResponse, 0, 1.6),
+      sub:   clamp(Beat.sub    * state.bassAmt, 0, 1.6),
+      bass:  clamp(Beat.bass   * state.bassAmt, 0, 1.6),
+      mid:   clamp(Beat.mid    * state.midAmt,  0, 1.6),
+      high:  clamp(Beat.treble * state.trebleAmt, 0, 1.6),
+      level: clamp(Beat.level, 0, 1.6),
+      flux:  clamp(Beat.flux, 0, 1.6),
+    };
+    gl.uniform1f(U(P.field,'uBlobSize'), state.blobSize*0.62*MX.liquidity*(1 + A.sub*0.55 + A.kick*0.30));
     gl.uniform1i(U(P.field,'uBlobCount'), Math.round(clamp(state.blobCount + (MX.geometry-1)*2.0,1,12)));
-    gl.uniform1f(U(P.field,'uFlow'), state.flowSpeed*1.35*MX.motion);
+    gl.uniform1f(U(P.field,'uFlow'), state.flowSpeed*1.35*MX.motion*(1 + A.level*0.55));
     gl.uniform1f(U(P.field,'uNoiseScale'), state.noiseScale*1.15*(0.85+MX.chaos*0.30));
     gl.uniform1f(U(P.field,'uNoiseStrength'), state.noiseStrength*MX.chaos);
     gl.uniform1f(U(P.field,'uSmoothK'), state.metaballSmooth*0.22*MX.liquidity);
-    gl.uniform1f(U(P.field,'uMotionAmp'), state.motionAmp*(0.35+state.globalIntensity*0.75)*MX.energy);
-    gl.uniform1f(U(P.field,'uWarp'), state.warpAmount*1.25*MX.distortion);
+    gl.uniform1f(U(P.field,'uMotionAmp'), state.motionAmp*(0.35+state.globalIntensity*0.75)*MX.energy*(1 + A.level*0.85 + A.kick*0.40));
+    gl.uniform1f(U(P.field,'uWarp'), state.warpAmount*1.25*MX.distortion*(1 + A.bass*0.70 + A.kick*0.45));
     gl.uniform2f(U(P.field,'uLiquidOff'), state.liquidX*0.9, -state.liquidY*0.9 - state.liquidPosY*0.9);
     gl.uniform1f(U(P.field,'uLiquidScale'), state.liquidScale);
     gl.uniform1i(U(P.field,'uOct'), Math.round(clamp(state.fbmOctaves + (state.liquidComplexity-3)*0.7, 1, 6)));
@@ -1848,27 +1860,27 @@ void main(){
     gl.uniform1f(C.uPinkI, state.pinkIntensity);
     gl.uniform1f(C.uWhiteI, state.whiteIntensity);
     gl.uniform1f(C.uBlack, state.blackLevel);
-    gl.uniform1f(C.uGlowI, state.glowIntensity*MX.glow*(1.0+Beat.treble*state.trebleAmt*0.7));
+    gl.uniform1f(C.uGlowI, state.glowIntensity*MX.glow*(1 + A.high*0.95 + A.kick*0.55));
     gl.uniform1f(C.uGlowR, state.glowRadius);
     gl.uniform1f(C.uBloomT, state.bloomThreshold);
-    gl.uniform1f(C.uChroma, state.chromatic);
+    gl.uniform1f(C.uChroma, state.chromatic*(1 + A.high*0.90 + A.flux*0.70));
     gl.uniform1f(C.uRGBSep, state.rgbSeparation*0.02);
     gl.uniform1f(C.uEcho, state.textEcho);
     gl.uniform1i(C.uEchoN, state.textEcho > 0.004 ? Math.round(state.textEchoCount) : 0);
-    gl.uniform1f(C.uEdgeGlow, state.edgeGlow);
+    gl.uniform1f(C.uEdgeGlow, state.edgeGlow*(1 + A.high*0.75));
     gl.uniform1f(C.uTextBlur, state.textBlur);
     gl.uniform1f(C.uTextOpacity, state.textOpacity);
-    gl.uniform1f(C.uWarpX, state.textWarpX*MX.distortion*MX.type);
-    gl.uniform1f(C.uWarpY, state.textWarpY*MX.distortion*MX.type);
+    gl.uniform1f(C.uWarpX, state.textWarpX*MX.distortion*MX.type*(1 + A.mid*0.85 + A.kick*0.35));
+    gl.uniform1f(C.uWarpY, state.textWarpY*MX.distortion*MX.type*(1 + A.mid*0.70));
     gl.uniform1f(C.uRipple, state.textRipple);
     gl.uniform1f(C.uRippleF, state.textRippleFreq);
     gl.uniform1f(C.uBulge, state.textBulge);
     gl.uniform1f(C.uTextSpeed, state.textSpeed);
-    gl.uniform1f(C.uTextAmp, state.textAmp*MX.energy);
-    gl.uniform1f(C.uScaleOsc, state.textScaleOsc*MX.energy);
+    gl.uniform1f(C.uTextAmp, state.textAmp*MX.energy*(1 + A.mid*0.75));
+    gl.uniform1f(C.uScaleOsc, state.textScaleOsc*MX.energy*(1 + A.sub*0.90));
     gl.uniform1f(C.uDriftX, state.textDriftX);
     gl.uniform1f(C.uDriftY, state.textDriftY);
-    gl.uniform1f(C.uJitter, state.textJitter);
+    gl.uniform1f(C.uJitter, state.textJitter*(1 + A.flux*2.2));
     gl.uniform1f(C.uMolten, state.textMode === 'molten' ? 1 : 0);
     gl.uniform1f(C.uDistortOn, state.distortOn ? 1 : 0);
     gl.uniform1f(C.uVignette, state.vignette);
@@ -1882,7 +1894,7 @@ void main(){
     const beat = Beat.value;                     // 0..1 transient envelope
     const tf = state.typeForce;
     gl.uniform3fv(C.uColAccent, accent);
-    gl.uniform1f(C.uElastic,    state.elastic  * (1.0 + beat*state.beatResponse*0.8));
+    gl.uniform1f(C.uElastic,    state.elastic * (1 + A.kick*1.10 + A.mid*0.45));
     gl.uniform1f(C.uFragment,   state.fragment * (0.55 + tf*0.9));
     gl.uniform1f(C.uPersp,      state.perspective);
     gl.uniform1f(C.uSpiral,     state.spiral + state.psyType*state.psyTypeSpiral);
@@ -1932,20 +1944,22 @@ void main(){
       gl.uniform2f(G.uRes, rt.geomT.w, rt.geomT.h);
       gl.uniform1f(G.uAspect, aspect);
       const GM = macros();
-      gl.uniform1f(G.uLasers, clamp(state.lasers*GM.geometry, 0, 1.6));
+      gl.uniform1f(G.uLasers, clamp(state.lasers*GM.geometry*(1 + A.high*0.85), 0, 2.0));
       gl.uniform1f(G.uLaserCount, state.laserCount);
       gl.uniform1f(G.uLaserWidth, state.laserWidth);
       gl.uniform1f(G.uLaserSpeed, state.laserSpeed);
-      gl.uniform1f(G.uRings, clamp(state.rings*GM.geometry, 0, 1.6));
+      gl.uniform1f(G.uRings, clamp(state.rings*GM.geometry*(1 + A.sub*0.80 + A.kick*0.55), 0, 2.0));
       gl.uniform1f(G.uRingCount, state.ringCount);
       gl.uniform1f(G.uRingThick, state.ringThickness);
       gl.uniform1f(G.uGrid, clamp(state.gridLines*GM.geometry, 0, 1.6));
       gl.uniform1f(G.uGridScale, state.gridScale);
-      gl.uniform1f(G.uBursts, clamp(state.bursts*(GM.geometry + GM.beat*state.beatAmt*Beat.value*state.impactStrength), 0, 1.8) * (1.0 - state.buildLength*0.25));
+      gl.uniform1f(G.uBursts, clamp(
+        state.bursts*(GM.geometry + A.kick*state.impactStrength*1.9), 0, 2.2)
+        * (1.0 - state.buildLength*0.25));
       gl.uniform3fv(G.uColAccent, accent);
       gl.uniform3fv(G.uColRed, red);
       gl.uniform3fv(G.uColPink, pink);
-      gl.uniform1f(G.uEnergy, state.energy*(1.0 + Beat.value*state.beatResponse*0.55)*(1.0+Beat.mid*state.midAmt*0.6)*GM.energy/1.2);
+      gl.uniform1f(G.uEnergy, state.energy*(1 + A.kick*0.9 + A.level*0.5)*GM.energy/1.2);
       gl.uniform1f(G.uChaos, state.chaos);
       gl.uniform1f(G.uIntensity, state.globalIntensity);
       gl.uniform2f(G.uFocus, state.liquidX*0.20, -state.liquidY*0.20);
@@ -1977,17 +1991,17 @@ void main(){
       const beatP = Beat.value;
       const bAmt = state.beatResponse;
 
-      gl.uniform1f(Q.uKaleido, clamp(state.kaleido*postMul.geometry + beatP*bAmt*state.bassAmt*0.18, 0, 1));
+      gl.uniform1f(Q.uKaleido, clamp(state.kaleido*postMul.geometry*(1 + A.kick*0.8) + A.kick*0.12, 0, 1));
       gl.uniform1f(Q.uKaleidoSeg, state.kaleidoSeg);
       gl.uniform1f(Q.uKaleidoRot, state.kaleidoRotate);
-      gl.uniform1f(Q.uTunnel, clamp(state.tunnel*postMul.depth, 0, 0.96));
+      gl.uniform1f(Q.uTunnel, clamp(state.tunnel*postMul.depth*(1 + A.sub*0.9), 0, 0.96));
       gl.uniform1f(Q.uTunnelDepth, state.tunnelDepth);
       gl.uniform1f(Q.uTunnelSpeed, state.tunnelSpeed);
       gl.uniform1f(Q.uTunnelWarp, state.tunnelWarp);
       gl.uniform1f(Q.uFractal, clamp(state.fractal*postMul.chaos, 0, 1));
       gl.uniform1f(Q.uFractalScale, state.fractalScale);
-      gl.uniform1f(Q.uContour, clamp(state.contourLine*postMul.geometry, 0, 1.5));
-      gl.uniform1f(Q.uFeedback, clamp(state.feedback*postMul.feedback, 0, 1));
+      gl.uniform1f(Q.uContour, clamp(state.contourLine*postMul.geometry*(1 + A.mid*0.8), 0, 1.8));
+      gl.uniform1f(Q.uFeedback, clamp(state.feedback*postMul.feedback*(1 + A.level*0.85), 0, 1));
       gl.uniform1f(Q.uFbZoom, state.feedbackZoom);
       gl.uniform1f(Q.uFbRotate, state.feedbackRotate);
       gl.uniform1f(Q.uTrail, clamp(state.trailLength*postMul.trail, 0, 1));
@@ -1997,9 +2011,9 @@ void main(){
       gl.uniform1f(Q.uChroma, clamp(state.chromaSplit*postMul.color, 0, 2.5));
       gl.uniform1f(Q.uPoster, state.posterize);
       gl.uniform1f(Q.uScan, state.scanline);
-      gl.uniform1f(Q.uHalation, clamp(state.halation*postMul.glow, 0, 1.6));
+      gl.uniform1f(Q.uHalation, clamp(state.halation*postMul.glow*(1 + A.high*1.1 + A.kick*0.5), 0, 2.0));
       gl.uniform1f(Q.uInvert, state.invert ? 1 : 0);
-      gl.uniform1f(Q.uHue, state.hueShift + (state.hueCycle*TAU*phase + state.colorCycle*TAU*phase*(0.4+state.colorSpeed*1.6))*postMul.color);
+      gl.uniform1f(Q.uHue, state.hueShift + (state.hueCycle*TAU*phase + state.colorCycle*TAU*phase*(0.4+state.colorSpeed*1.6))*postMul.color + A.high*0.45);
       gl.uniform1f(Q.uSat, clamp(state.saturation*(0.75+postMul.color*0.55), 0, 3));
       gl.uniform1f(Q.uContrast, state.contrast);
       gl.uniform1f(Q.uGrain, state.grain);
@@ -2112,8 +2126,8 @@ const Beat = (() => {
   let mode = 'off';
   let playing = false;
 
-  let bass = 0, mid = 0, treble = 0, level = 0;
-  let bassS = 0, midS = 0, trebleS = 0, levelS = 0;
+  let bass = 0, mid = 0, treble = 0, level = 0, sub = 0;
+  let bassS = 0, midS = 0, trebleS = 0, levelS = 0, subS = 0;
   let env = 0;              // beat envelope, decays after each hit
   let lastBeat = 0;
   let beatCount = 0;
@@ -2122,7 +2136,6 @@ const Beat = (() => {
   let micStream = null;     // live capture stream, released on stop
   let spectrum = new Uint8Array(128);
   let bpmEst = 0;
-  let onsets = [];
 
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -2132,8 +2145,10 @@ const Beat = (() => {
     if (!AC) return null;
     ctx = new AC();
     analyser = ctx.createAnalyser();
-    analyser.fftSize = 1024;
-    analyser.smoothingTimeConstant = 0.72;
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.55;
+  analyser.minDecibels = -95;
+  analyser.maxDecibels = -10;
     freq = new Uint8Array(analyser.frequencyBinCount);
     timeData = new Uint8Array(analyser.fftSize);
     gainNode = ctx.createGain();
@@ -2221,58 +2236,151 @@ const Beat = (() => {
     return sum/((b-a)*255);
   };
 
-  /* Read the analyser. Also does simple transient detection for "beat". */
-  function analyse(t){
-    if (!analyser || !playing){ bass = mid = treble = level = 0; return; }
+  /* ------------------------------------------------------------------
+     ANALYSIS
 
-    const rawBass = bandAvg(0.0, 0.09);
-    const rawMid  = bandAvg(0.09, 0.42);
-    const rawTre = bandAvg(0.42, 1.0);
-    const rawLvl  = (rawBass*0.5 + rawMid*0.35 + rawTre*0.15);
+     getByteFrequencyData returns dB-scaled magnitudes: silence reads ~0 but
+     everything below about -60 dBFS also reads ~0, and normal music only
+     reaches 150-230. Using the raw byte/255 average meant every band sat near
+     zero and the visuals barely moved. Three fixes:
 
-    /* smoothing: exponential, stronger when the user asks for it */
-    const k = clamp(1 - state.audioSmooth, 0.04, 1);
-    bass   += (rawBass - bass)   * k;
-    mid    += (rawMid  - mid)    * k;
-    treble += (rawTre  - treble) * k;
-    level  += (rawLvl  - level)  * k;
+       1. read FFT bins directly with getFloatFrequencyData (real dB values)
+       2. convert dB -> linear amplitude and average power per band
+       3. normalise each band against a slow-moving adaptive peak, so the
+          reaction is relative to the material rather than an absolute guess
 
-    /* spectral centroid + flux, for fine detail reactions */
-    analyser.getByteFrequencyData(freq);
-    spectrum = freq;
-    let num = 0, den = 0, flux = 0;
-    for (let i=0;i<freq.length;i++){
-      const v = freq[i]/255;
-      num += v*i; den += v;
-      flux += Math.abs(v - (prevSpec[i]||0));
-      prevSpec[i] = v;
+     Onsets use spectral flux with a median-style adaptive threshold, which
+     works for a kick, a gabber kick and a hi-hat without retuning.
+     ------------------------------------------------------------------ */
+  const FFT = 2048;
+  let fdb = null;                 // Float32Array of dB values
+  let hzPerBin = 0;
+  let bandIdx = null;             // precomputed bin ranges per band
+  let peak = { sub:0.12, bass:0.12, mid:0.12, high:0.12, level:0.12 };
+  let fluxHist = new Float32Array(24);
+  let fluxPtr = 0;
+  let lastFlux = 0;
+
+  function setupBands(){
+    const sr = ctx.sampleRate;
+    hzPerBin = (sr/2) / (FFT/2);
+    const rng = (lo, hi) => {
+      const a = Math.max(1, Math.floor(lo/hzPerBin));
+      const b = Math.min(FFT/2 - 1, Math.ceil(hi/hzPerBin));
+      return [a, Math.max(a+1, b)];
+    };
+    bandIdx = {
+      sub:  rng(20,   60),      /* kick fundamental, sub-bass */
+      bass: rng(60,   200),     /* low end / bassline */
+      mid:  rng(200,  2000),    /* snares, acid, vocals */
+      high: rng(2000, 12000),   /* hats, air, noise */
+    };
+  }
+
+  /* average linear power across a bin range */
+  function bandPower(range, floorDb){
+    let sum = 0, n = 0;
+    for (let i = range[0]; i < range[1]; i++){
+      const db = fdb[i];
+      if (db < floorDb) { n++; continue; }      /* treat as silence */
+      const amp = Math.pow(10, db/20);           /* dBFS -> linear */
+      sum += amp*amp;                            /* power */
+      n++;
     }
-    centroid += ((den > 0.001 ? (num/den)/freq.length : 0) - centroid)*0.25;
-    fluxV += (clamp(flux/freq.length*7.5, 0, 1) - fluxV)*0.35;
+    return n ? Math.sqrt(sum/n) : 0;
+  }
 
-    /* transient: bass energy jumping above its own running average */
-    if (bass > bassAvg*1.26 && bass > 0.14 && t - lastBeat > 110){
+  /* normalise against an adaptive peak so the band uses the full 0..1 range */
+  function norm(key, v){
+    if (v > peak[key]) peak[key] += (v - peak[key]) * 0.55;
+    else               peak[key] += (v - peak[key]) * 0.006;   /* slow decay */
+    const p = Math.max(0.02, peak[key]);
+    return clamp(v / p, 0, 1);
+  }
+
+  function analyse(t){
+    if (!analyser || !playing){
+      bass = mid = treble = level = 0;
+      sub = 0; fluxV = 0;
+      return;
+    }
+    if (!fdb || fdb.length !== analyser.frequencyBinCount){
+      fdb = new Float32Array(analyser.frequencyBinCount);
+      setupBands();
+    }
+    analyser.getFloatFrequencyData(fdb);
+
+    /* raw linear power per band */
+    const pSub = bandPower(bandIdx.sub,  -92);
+    const pBas = bandPower(bandIdx.bass, -92);
+    const pMid = bandPower(bandIdx.mid,  -92);
+    const pHig = bandPower(bandIdx.high, -95);
+
+    /* normalise to 0..1 against the running peak */
+    const nSub = norm('sub',  pSub);
+    const nBas = norm('bass', pBas);
+    const nMid = norm('mid',  pMid);
+    const nHig = norm('high', pHig);
+    const nLvl = norm('level', (pSub*0.42 + pBas*0.30 + pMid*0.20 + pHig*0.08));
+
+    /* smoothing: attack fast, release slower, so hits punch and never chatter */
+    const rel = clamp(1 - state.audioSmooth, 0.05, 1);
+    const att = Math.min(1, rel*2.6);
+    const glide = (cur, target) => cur + (target - cur) * (target > cur ? att : rel);
+
+    sub    = glide(sub,    nSub);
+    bass   = glide(bass,   nBas);
+    mid    = glide(mid,    nMid);
+    treble = glide(treble, nHig);
+    level  = glide(level,  nLvl);
+
+    /* ---- spectral flux: onset detection ---- */
+    spectrum = new Uint8Array(analyser.frequencyBinCount);
+    for (let i=0;i<spectrum.length;i++){
+      const db = fdb[i];
+      spectrum[i] = db < -95 ? 0 : Math.max(0, Math.min(255, (db + 95) * 2.72));
+    }
+    let flux = 0;
+    for (let i=1;i<fdb.length;i++){
+      const a2 = Math.pow(10, Math.max(-95, fdb[i])/20);
+      const b2 = Math.pow(10, Math.max(-95, prevSpec[i] || -95)/20);
+      const d = a2 - b2;
+      if (d > 0) flux += d;                 /* positive flux only */
+      prevSpec[i] = fdb[i];
+    }
+    lastFlux = flux;
+    /* adaptive threshold: the running median of recent flux */
+    let med = 0;
+    const sorted = Array.from(fluxHist).sort((x,y)=>x-y);
+    med = sorted[Math.floor(sorted.length*0.62)] || 0;
+    fluxHist[fluxPtr] = flux; fluxPtr = (fluxPtr+1) % fluxHist.length;
+    const isOnset = flux > med*1.55 && flux > 0.02;
+    fluxV += ((isOnset ? 1 : 0) - fluxV) * 0.5;
+    centroid = clamp(centroid + ((nHig*0.65 + nMid*0.35) - centroid)*0.2, 0, 1);
+
+    /* ---- onset -> beat envelope ---- */
+    if (isOnset && t - lastBeat > 90){
       const gap = t - lastBeat;
       lastBeat = t; beatCount++;
       env = 1.0;
-      /* rolling BPM estimate from the inter-beat interval */
-      if (gap > 180 && gap < 1400){
+      if (gap > 150 && gap < 1600){
         const inst = 60000/gap;
-        bpmEst = bpmEst ? bpmEst*0.82 + inst*0.18 : inst;
+        bpmEst = bpmEst ? bpmEst*0.85 + inst*0.15 : inst;
       }
     }
-    bassAvg += (bass - bassAvg)*0.045;
+    /* envelope decay is time-based so it is frame-rate independent */
+    env *= 0.90;
+    if (sub > 0.55) env = Math.max(env, (sub - 0.55) * 1.35);
   }
 
   let centroid = 0, fluxV = 0, prevSpec = new Float32Array(512);
 
-  let bassAvg = 0.2;
 
   function tick(t, phase, playing_){
     /* master switch: no audio influence at all when it is off */
     if (!state.audioReactive){
-      env = 0; bass = mid = treble = level = 0;
-      bassS = midS = trebleS = levelS = 0;
+      env = 0; bass = mid = treble = level = 0; sub = 0;
+      bassS = midS = trebleS = levelS = 0; subS = 0;
       return;
     }
     if (mode === 'manual' || mode === 'off'){
@@ -2288,21 +2396,30 @@ const Beat = (() => {
       mid  = 0.30 + 0.30*wob;
       treble = 0.22 + 0.20*(1-env);
       level = 0.30 + 0.50*env;
+      const subM = 0.30 + 0.55*env;
+      subS = subM;
       bassS = bass; midS = mid; trebleS = treble; levelS = level;
       return;
     }
 
     analyse(t);
-    const off = +state.audioOffset || 0;
-    const ph = (phase + off) % 1;
-    /* keep the envelope alive between transients so motion stays coherent */
-    const decay = Math.pow(0.86, 1);
-    env = env*(mode === 'mic' ? 0.90 : 0.93) + (bass > 0.35 ? bass*0.05 : 0);
-    bassS   += (clamp(bass  *state.audioSens, 0, 1.6) - bassS)  *0.35;
-    midS    += (clamp(mid   *state.audioSens, 0, 1.6) - midS)   *0.30;
-    trebleS += (clamp(treble*state.audioSens, 0, 1.6) - trebleS)*0.28;
-    levelS  += (clamp(level *state.audioSens, 0, 1.6) - levelS) *0.25;
-    env = Math.max(env, Math.pow(1 - ((ph*(state.bpm/60)*4) % 1), 4.0)*0.55);
+    /* the offset shifts the visual phase relative to the audio, so a track can
+       be nudged if the visuals feel late */
+    const sens = state.audioSens;
+    const glide = (cur, target) => cur + (target - cur) * 0.55;
+    subS    = glide(subS,    clamp(sub    * sens, 0, 1.6));
+    bassS   = glide(bassS,   clamp(bass   * sens, 0, 1.6));
+    midS    = glide(midS,    clamp(mid    * sens, 0, 1.6));
+    trebleS = glide(trebleS, clamp(treble * sens, 0, 1.6));
+    levelS  = glide(levelS,  clamp(level  * sens, 0, 1.6));
+
+    /* fallback motion: when the track is quiet the composition still breathes,
+       so it never freezes into a still frame */
+    if (state.fallbackMotion && levelS < 0.06){
+      const fallback = 0.10 + 0.06*Math.sin(phase*TAU*2.0);
+      levelS = Math.max(levelS, fallback);
+      bassS  = Math.max(bassS, fallback*0.7);
+    }
   }
 
   return {
@@ -2311,6 +2428,7 @@ const Beat = (() => {
     get mode(){ return mode; },
     set mode(v){ mode = v; },
     get value(){ return clamp(env, 0, 1); },
+    get sub(){ return clamp(subS, 0, 1.6); },
     get bass(){ return clamp(bassS, 0, 1.6); },
     get mid(){ return clamp(midS, 0, 1.6); },
     get treble(){ return clamp(trebleS, 0, 1.6); },
