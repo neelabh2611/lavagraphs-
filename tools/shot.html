@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<title>screenshot harness</title>
+<style>
+  html,body{margin:0;background:#000;overflow:hidden}
+  #gl{display:block}
+  #status{position:fixed;left:0;bottom:0;font:10px monospace;color:#0f0;background:#000;padding:2px 6px;z-index:9}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="status">booting…</div>
+<script>
+/* Standalone harness: loads the real engine source, renders one preset through
+   the actual pipeline, and exposes a grab() the automation calls. */
+window.__ready = false;
+window.__err = null;
+</script>
+<script src="../src/core.js"></script>
+<script>
+(async function(){
+  const S = window.LAVA;
+  const status = document.getElementById('status');
+  try {
+    // the real renderer expects #gl to exist — it does
+    if (!S.Renderer.init()){
+      status.textContent = 'ERROR: WebGL2 init failed';
+      window.__err = 'init failed';
+      return;
+    }
+    S.TextRenderer.ensure();
+    S.Renderer.uploadText();
+    window.__ready = true;
+    status.textContent = 'ready';
+  } catch(e){
+    window.__err = String(e && e.message || e);
+    status.textContent = 'ERROR: ' + window.__err;
+    console.error(e);
+  }
+})();
+
+/* Render one preset at a given size and return a data URL. */
+window.grab = function(presetId, w, h, phase){
+  const S = window.LAVA;
+  const p = window.__PRESETS[presetId];
+  if (!p) return { error: 'no preset ' + presetId };
+  const saved = {};
+  for (const k in p.s) { saved[k] = S.state[k]; S.state[k] = p.s[k]; }
+  try {
+    S.TextRenderer.force();
+    S.Renderer.resize(w, h);
+    S.Renderer.uploadText();
+    const ph = phase === undefined ? 0.34 : phase;
+    S.Renderer.draw(ph, ph * Math.max(0.5, +S.state.loopDuration || 8));
+    return { ok: true, url: S.Renderer.canvas.toDataURL('image/png') };
+  } catch(e){
+    return { error: String(e && e.message || e) };
+  } finally {
+    for (const k in saved) S.state[k] = saved[k];
+    S.TextRenderer.force();
+  }
+};
+</script>
+<script src="../src/ui_presets.js"></script>
+<script>
+  // the preset registry is declared with const inside a script — bridge it
+  window.__PRESETS = (typeof PARTY_PRESETS !== 'undefined') ? PARTY_PRESETS : null;
+</script>
+</body>
+</html>

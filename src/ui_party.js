@@ -30,6 +30,24 @@ function buildTrancePane(){
   s.body.appendChild(mkSlider('Intensity', 'tranceIntensity', 0, 1, 0.01, pct));
   frag.appendChild(s.sec);
 
+  /* ---- strobe / flash engine ---- */
+  s = section('Strobe / Flash', true);
+  s.body.appendChild(mkSlider('Strobe amount', 'strobe', 0, 1, 0.01, pct));
+  s.body.appendChild(mkSlider('Flashes per loop', 'strobeRate', 1, 32, 1, f0));
+  s.body.appendChild(mkSlider('Black gap', 'strobeBlack', 0, 1, 0.01, pct));
+  s.body.appendChild(mkSlider('Flash hold', 'strobeHold', 0.04, 0.95, 0.01, pct));
+  s.body.appendChild(mkSeg('Mode', 'strobeMode', [
+    {value:'hard', label:'WHITE'}, {value:'colour', label:'COLOUR'},
+    {value:'invert', label:'INVERT'}, {value:'mixed', label:'MIXED'},
+  ]));
+  s.body.appendChild(mkColor('Flash colour', 'strobeColor'));
+  const strobeWarn = document.createElement('div');
+  strobeWarn.className = 'note warn';
+  strobeWarn.innerHTML = 'Rapid flashing can trigger seizures. <b>Reduced flashing</b> ' +
+    'caps the strobe depth automatically, whatever a preset asks for.';
+  s.body.appendChild(strobeWarn);
+  frag.appendChild(s.sec);
+
   s = section('Kaleidoscope & Symmetry', true);
   s.body.appendChild(mkSlider('Amount', 'kaleido', 0, 1, 0.01, pct));
   s.body.appendChild(mkSlider('Segments', 'kaleidoSeg', 2, 24, 1, f0));
@@ -345,30 +363,74 @@ function paintMeters(){
    so what you see on the card is what the engine actually produces. */
 let presetBrowserEl = null;
 let presetFilter = 'all';
+let presetGroup = 'all';
 
-const PRESET_GROUPS = [
-  { id:'all',     label:'ALL' },
-  { id:'hardcore',label:'HARDCORE' },
-  { id:'liquid',  label:'LIQUID' },
-  { id:'neon',    label:'NEON' },
-  { id:'disco',   label:'DISCO' },
-  { id:'classic', label:'CLASSIC' },
+/* Filters double as the difficulty scale and the accessibility entry point. */
+const PRESET_FILTERS = [
+  { id:'all',   label:'ALL',    title:'Every preset' },
+  { id:'basic', label:'BASIC',  title:'Tier 1-2 · calm, safe starting points' },
+  { id:'wild',  label:'WILD',   title:'Tier 4-5 · heavy effect stacks' },
+  { id:'flash', label:'FLASH',  title:'Only presets that carry a flashing warning' },
+  { id:'safe',  label:'SAFE',   title:'Only presets with no flashing warning' },
 ];
+
+const FLASH_LABEL = ['', 'CAUTION', 'FLASHING'];
 
 function buildPresetBrowser(){
   const frag = document.createDocumentFragment();
-
   let s = section('Preset Browser', true);
-  s.body.appendChild(mkSeg('', 'presetFilterSeg', PRESET_GROUPS.map(g => ({
-    value: g.id, label: g.label
-  }))));
-  /* the seg writes to state; mirror it into our local filter instead */
-  const seg = s.body.querySelector('.seg');
-  if (seg) seg.addEventListener('click', e => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    presetFilter = b.dataset.v;
-    renderPresetCards();
+
+  /* ---- difficulty / safety filter ---- */
+  const fRow = document.createElement('div');
+  fRow.className = 'pfRow';
+  PRESET_FILTERS.forEach(f => {
+    const b = document.createElement('button');
+    b.className = 'pfBtn' + (f.id === 'all' ? ' on' : '');
+    b.dataset.f = f.id;
+    b.textContent = f.label;
+    b.title = f.title;
+    b.addEventListener('click', () => {
+      presetFilter = f.id;
+      fRow.querySelectorAll('.pfBtn').forEach(x => x.classList.toggle('on', x === b));
+      renderPresetCards();
+    });
+    fRow.appendChild(b);
+  });
+  s.body.appendChild(fRow);
+
+  /* ---- genre ---- */
+  const gRow = document.createElement('div');
+  gRow.className = 'pgRow';
+  [['all','ALL'],['hardcore','HARDCORE'],['liquid','LIQUID'],
+   ['neon','NEON'],['disco','DISCO'],['classic','CLASSIC']].forEach(pair => {
+    const b = document.createElement('button');
+    b.className = 'pgBtn' + (pair[0] === 'all' ? ' on' : '');
+    b.dataset.g = pair[0];
+    b.textContent = pair[1];
+    b.addEventListener('click', () => {
+      presetGroup = pair[0];
+      gRow.querySelectorAll('.pgBtn').forEach(x => x.classList.toggle('on', x === b));
+      renderPresetCards();
+    });
+    gRow.appendChild(b);
+  });
+  s.body.appendChild(gRow);
+
+  /* ---- photosensitivity banner, shown only in the FLASH view ---- */
+  const banner = document.createElement('div');
+  banner.className = 'flashBanner';
+  banner.id = 'flashBanner';
+  banner.innerHTML =
+    '<b>PHOTOSENSITIVITY WARNING</b>' +
+    '<span>These presets contain rapid flashing, strobing and high-contrast ' +
+    'luminance changes that can trigger seizures in people with photosensitive ' +
+    'epilepsy. Reduced flashing soft-clips the brightest transients.</span>' +
+    '<button id="flashReduce">ENABLE REDUCED FLASHING</button>';
+  s.body.appendChild(banner);
+  banner.querySelector('#flashReduce').addEventListener('click', () => {
+    set('reducedFlash', true);
+    syncAll();
+    toast('REDUCED FLASHING ENABLED');
   });
 
   const grid = document.createElement('div');
@@ -392,33 +454,78 @@ function buildPresetBrowser(){
   );
   s.body.appendChild(row);
   frag.appendChild(s.sec);
-
   return frag;
+}
+
+function presetMatches(p){
+  if (presetGroup !== 'all' && p.group !== presetGroup) return false;
+  switch (presetFilter){
+    case 'basic': return p.tier <= 2;
+    case 'wild':  return p.tier >= 4;
+    case 'flash': return p.flash >= 1;
+    case 'safe':  return p.flash === 0;
+    default:      return true;
+  }
 }
 
 function renderPresetCards(){
   if (!presetBrowserEl) return;
   presetBrowserEl.innerHTML = '';
-  const ids = Object.keys(PARTY_PRESETS).filter(id => {
-    const p = PARTY_PRESETS[id];
-    return presetFilter === 'all' || p.group === presetFilter;
+
+  const banner = document.getElementById('flashBanner');
+  if (banner) banner.classList.toggle('on', presetFilter === 'flash');
+
+  const ids = Object.keys(PARTY_PRESETS).filter(id => presetMatches(PARTY_PRESETS[id]));
+  if (!ids.length){
+    const empty = document.createElement('div');
+    empty.className = 'note';
+    empty.textContent = 'No presets match this combination of filters.';
+    presetBrowserEl.appendChild(empty);
+    return;
+  }
+
+  /* sort by tier so the list reads as a ramp from subtle to extreme */
+  ids.sort((x, y) => {
+    const A = PARTY_PRESETS[x], B = PARTY_PRESETS[y];
+    return A.tier - B.tier || A.flashScore - B.flashScore;
   });
 
+  let lastTier = 0;
   ids.forEach(id => {
     const p = PARTY_PRESETS[id];
+
+    if (p.tier !== lastTier){
+      lastTier = p.tier;
+      const head = document.createElement('div');
+      head.className = 'tierHead t' + p.tier;
+      head.innerHTML = '<span>' + p.tier + '</span>' + TIER_NAMES[p.tier] +
+        '<i>' + '▮'.repeat(p.tier) + '▯'.repeat(5 - p.tier) + '</i>';
+      presetBrowserEl.appendChild(head);
+    }
+
     const btn = document.createElement('button');
     btn.className = 'prCard' + (activePreset === id ? ' on' : '');
     btn.dataset.preset = id;
-    btn.title = p.name + ' — ' + p.sub;
+    btn.title = p.name + ' — ' + p.sub + '  ·  tier ' + p.tier +
+      ' ' + TIER_NAMES[p.tier] +
+      (p.flash ? '  ·  ' + FLASH_LABEL[p.flash] + ' WARNING' : '');
 
     const cv = document.createElement('canvas');
-    const CW = 108, CH = 108;
-    cv.width = CW; cv.height = CH;
+    cv.width = 128; cv.height = 72;   /* 16:9 to match the default frame */
     btn.appendChild(cv);
+
+    if (p.flash){
+      const badge = document.createElement('span');
+      badge.className = 'flashBadge f' + p.flash;
+      badge.textContent = p.flash === 2 ? '!' : '⚠';
+      badge.title = FLASH_LABEL[p.flash] + ' — rapid luminance changes';
+      btn.appendChild(badge);
+    }
 
     const nom = document.createElement('div');
     nom.className = 'prn';
-    nom.textContent = p.name;
+    nom.innerHTML = '<span>' + p.name + '</span>' +
+                    '<em class="tierTag">T' + p.tier + '</em>';
     btn.appendChild(nom);
 
     btn.addEventListener('click', () => {
@@ -427,7 +534,6 @@ function renderPresetCards(){
     });
     presetBrowserEl.appendChild(btn);
 
-    /* paint the real render a moment later so the panel opens instantly */
     setTimeout(() => paintCard(cv, p), 16);
   });
 }

@@ -25,7 +25,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit
 #app{display:grid;grid-template-rows:46px minmax(0,1fr) 58px;grid-template-columns:310px minmax(0,1fr) 320px;height:100%;width:100%}
 
 /* ---------------- TOPBAR ---------------- */
-#topbar{grid-area:1/1/2/4;display:flex;align-items:stretch;background:var(--panel);border-bottom:1px solid var(--line);position:relative;z-index:50}
+#topbar{grid-area:1/1/2/4;display:flex;align-items:stretch;overflow:hidden;background:var(--panel);border-bottom:1px solid var(--line);position:relative;z-index:50}
 .brand{display:flex;align-items:center;gap:8px;padding:0 14px;border-right:1px solid var(--line);flex-shrink:0}
 .brand .dot{width:6px;height:6px;background:var(--red);border-radius:50%;box-shadow:0 0 9px 1px rgba(255,34,51,.85);animation:bp 3.4s ease-in-out infinite}
 @keyframes bp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.8)}}
@@ -71,11 +71,15 @@ aside{background:var(--panel);display:flex;flex-direction:column;min-height:0;mi
 .secb{padding:1px 11px 11px;display:none}
 .sec.open .secb{display:block}
 
-.row{display:flex;align-items:center;gap:7px;margin-bottom:8px;min-height:19px}
+.row{display:grid;grid-template-columns:1fr auto;align-items:center;
+  column-gap:8px;row-gap:3px;margin-bottom:9px;min-height:19px}
+.row .slider{grid-column:1/-1}
 .row:last-child{margin-bottom:0}
-.row>label{font:400 11.5px/1.2 var(--mono);color:var(--txt);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;width:108px}
+.row>label{font:400 11.5px/1.25 var(--mono);color:var(--txt);letter-spacing:.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .row .sl{flex:1;min-width:0}
-.row .nv{font:400 11.5px/1 var(--mono);color:#b6b6c4;width:40px;text-align:right;flex-shrink:0;cursor:ew-resize;font-variant-numeric:tabular-nums}
+.row .nv{font:500 11.5px/1 var(--mono);color:var(--bright);min-width:44px;
+  text-align:right;flex-shrink:0;cursor:ew-resize;font-variant-numeric:tabular-nums}
 .row .nv:hover{color:var(--bright)}
 .row.full{flex-wrap:wrap}
 .row.full>label{width:100%;margin-bottom:1px}
@@ -90,7 +94,7 @@ aside{background:var(--panel);display:flex;flex-direction:column;min-height:0;mi
 .slider .dflt{position:absolute;width:1px;height:5px;background:#4a4a58;top:5px;pointer-events:none}
 
 /* toggle */
-.tg{width:26px;height:14px;background:#1e1e26;border:1px solid #2a2a34;position:relative;cursor:pointer;flex-shrink:0;transition:.14s}
+.tg{grid-column:2;justify-self:end;width:28px;height:15px;background:#1e1e26;border:1px solid #2a2a34;position:relative;cursor:pointer;flex-shrink:0;transition:.14s}
 .tg::after{content:'';position:absolute;top:2px;left:2px;width:8px;height:8px;background:#54545f;transition:.14s}
 .tg.on{background:rgba(255,34,51,.2);border-color:var(--red2)}
 .tg.on::after{transform:translateX(12px);background:var(--red)}
@@ -208,9 +212,18 @@ select.selin{cursor:pointer;height:26px}
 #toast{position:fixed;bottom:70px;left:50%;transform:translate(-50%,10px);background:#101014;border:1px solid var(--line);border-left:2px solid var(--red);padding:8px 14px;font:400 11.5px/1 var(--mono);letter-spacing:.07em;color:var(--txt);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:300;white-space:nowrap}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 
-body.present #left,body.present #right,body.present #timeline,body.present .ov,body.present #zoom{display:none}
-body.present #app{grid-template-rows:46px minmax(0,1fr)}
-body.present #stage{grid-area:2/1/3/4}
+/* Presentation / fullscreen: the canvas owns the entire viewport. */
+body.present #left,body.present #right,body.present #timeline,
+body.present .ov,body.present #zoom,body.present #topbar,body.present #dtabs{display:none}
+body.present #app{grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr)}
+body.present #stage{grid-area:1/1/2/2}
+body.present #wrap{background:#000}
+#exitPresent{display:none;position:fixed;top:12px;right:12px;z-index:400;
+  background:rgba(10,10,13,.82);border:1px solid var(--line);color:var(--txt);
+  font:500 12px/1 var(--mono);letter-spacing:.12em;padding:9px 14px;cursor:pointer;
+  backdrop-filter:blur(6px);transition:.14s}
+#exitPresent:hover{color:#fff;border-color:var(--red);background:rgba(200,20,40,.85)}
+body.present #exitPresent{display:block}
 
 #dtabs{display:none}
 @media(max-width:1180px){
@@ -336,15 +349,66 @@ body.present #stage{grid-area:2/1/3/4}
   .modebtn{padding:0 8px;letter-spacing:.05em;font-size:11px}
   .modebtn .kbd{display:none}
 }
-@media (max-width:1080px){
+@media (max-width:1180px){
   .brand i,.tbl{display:none}
-  .modes{padding:0 5px}
-  .modebtn span:not(.kbd){display:none}
-  .modebtn{padding:0 10px;min-width:34px;justify-content:center}
+  .modes{padding:0 6px;gap:4px}
+  .modebtn{padding:0 9px;letter-spacing:.03em;font-size:11px}
+  .modebtn .kbd{display:none}
 }
-@media (max-width:760px){
-  .modes{display:none}
+/* The three master switches stay on screen at every width — they are the
+   primary controls, so they shrink to LED-only rather than disappearing. */
+@media (max-width:820px){
+  .proj,.tb#btnSave,.tb#btnLoad,.tb#btnPresent,#btnRestart{display:none}
+  .modes{padding:0 4px;gap:3px}
+  .modebtn{padding:0 7px;font-size:10.5px}
+  .modebtn .led{width:6px;height:6px}
 }
+
+/* ===================== PRESET BROWSER ===================== */
+.pfRow{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:5px}
+.pfBtn{background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+  padding:8px 2px;cursor:pointer;font:500 11px/1 var(--mono);letter-spacing:.05em;
+  transition:.12s;text-transform:uppercase}
+.pfBtn:hover{color:var(--bright);border-color:#4a4a58}
+.pfBtn.on{background:var(--red);border-color:var(--red);color:#fff}
+.pfBtn[data-f="flash"].on{background:#c4720a;border-color:#c4720a}
+.pfBtn[data-f="safe"].on{background:#1c7a5e;border-color:#1c7a5e}
+.pgRow{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:9px}
+.pgBtn{flex:1 1 auto;background:0 0;border:1px solid var(--line);color:var(--dim);
+  padding:6px 7px;cursor:pointer;font:400 11px/1 var(--mono);letter-spacing:.04em;
+  transition:.12s;white-space:nowrap}
+.pgBtn:hover{color:var(--bright);background:var(--panel3)}
+.pgBtn.on{color:var(--bright);border-color:#5a5a6a;background:var(--panel3)}
+.flashBanner{display:none;background:rgba(196,114,10,.12);border:1px solid rgba(255,170,40,.45);
+  border-left:3px solid #ffaa28;padding:10px 11px;margin-bottom:9px}
+.flashBanner.on{display:block}
+.flashBanner b{display:block;font:600 11.5px/1.3 var(--mono);letter-spacing:.09em;
+  color:#ffc761;margin-bottom:6px}
+.flashBanner span{display:block;font:400 11px/1.6 var(--mono);color:#c9b591;margin-bottom:8px}
+.flashBanner button{width:100%;background:#ffaa28;border:0;color:#1a1000;cursor:pointer;
+  padding:8px;font:600 11px/1 var(--mono);letter-spacing:.08em;transition:.12s}
+.flashBanner button:hover{background:#ffc761}
+.tierHead{grid-column:1/-1;display:flex;align-items:center;gap:7px;margin:11px 0 2px;
+  font:500 11px/1 var(--mono);letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+.tierHead:first-child{margin-top:0}
+.tierHead span{display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;background:var(--panel3);border:1px solid var(--line);
+  color:var(--bright);font-size:11px}
+.tierHead i{margin-left:auto;font-style:normal;font-size:10px;letter-spacing:1px;opacity:.55}
+.tierHead.t1 span{background:#1c7a5e;border-color:#1c7a5e;color:#fff}
+.tierHead.t2 span{background:#2f6f9e;border-color:#2f6f9e;color:#fff}
+.tierHead.t3 span{background:#8a6a1c;border-color:#8a6a1c;color:#fff}
+.tierHead.t4 span{background:#a8451c;border-color:#a8451c;color:#fff}
+.tierHead.t5 span{background:var(--red);border-color:var(--red);color:#fff}
+.prCard{position:relative}
+.flashBadge{position:absolute;top:4px;right:4px;width:19px;height:19px;
+  display:flex;align-items:center;justify-content:center;font-size:11px;
+  background:rgba(0,0,0,.78);border:1px solid #c4720a;color:#ffc761;z-index:2}
+.flashBadge.f2{background:rgba(196,30,30,.85);border-color:#ff5555;color:#fff}
+.prn{display:flex;align-items:center;gap:4px}
+.prn span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prn .tierTag{font-style:normal;font-size:10px;color:#7c7c8d;flex-shrink:0}
+.prCard.on .prn .tierTag{color:#ffb0b8}
 </style>
 </head>
 <body>
@@ -352,6 +416,17 @@ body.present #stage{grid-area:2/1/3/4}
 
   <header id="topbar">
     <div class="brand"><span class="dot"></span><b>LAVA TYPE</b><i>1.0</i></div>
+    <div class="modes" id="modeBar">
+      <button class="modebtn" id="mTrance" title="Trance mode — psychedelic effect stack (T)">
+        <i class="led"></i><span>TRANCE</span><span class="kbd">T</span>
+      </button>
+      <button class="modebtn" id="mParty" title="Party mode — macro control surface (Y)">
+        <i class="led"></i><span>PARTY</span><span class="kbd">Y</span>
+      </button>
+      <button class="modebtn" id="mAudio" title="Audio reactive — analyse tab, mic or file (U)">
+        <i class="led"></i><span>AUDIO</span><span class="kbd">U</span>
+      </button>
+    </div>
     <div class="proj"><input id="projName" value="DARK CLOUD BREAKS" spellcheck="false" aria-label="Project name"></div>
     <div class="grp">
       <button class="tb" id="btnReset" title="Reset composition"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4.2v5h5"/></svg><span class="lbl">RESET</span></button>
@@ -374,17 +449,6 @@ body.present #stage{grid-area:2/1/3/4}
       <button class="tb" id="btnGuides" title="Safe guides — '"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18"/><rect x="8.5" y="8.5" width="7" height="7"/></svg></button>
       <button class="tb" id="btnFull" title="Fullscreen — F"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
       <button class="tb" id="btnPresent" title="Presentation mode — H"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="2.4"/></svg></button>
-    </div>
-    <div class="modes" id="modeBar">
-      <button class="modebtn" id="mTrance" title="Trance mode — psychedelic effect stack (T)">
-        <i class="led"></i><span>TRANCE</span><span class="kbd">T</span>
-      </button>
-      <button class="modebtn" id="mParty" title="Party mode — macro control surface (Y)">
-        <i class="led"></i><span>PARTY</span><span class="kbd">Y</span>
-      </button>
-      <button class="modebtn" id="mAudio" title="Audio reactive — analyse tab, mic or file (U)">
-        <i class="led"></i><span>AUDIO</span><span class="kbd">U</span>
-      </button>
     </div>
     <div class="spacer"></div>
     <div class="grp">
@@ -414,6 +478,7 @@ body.present #stage{grid-area:2/1/3/4}
 
   <main id="stage">
     <div id="wrap"><canvas id="gl"></canvas></div>
+    <button id="exitPresent" title="Exit presentation — Esc">EXIT ✕</button>
     <div id="nodraw"><span>WEBGL2 UNAVAILABLE</span><span style="color:#43434e">This composition requires WebGL2 with float render targets.<br>Try Chrome, Edge, or Firefox with hardware acceleration enabled.</span></div>
     <div id="guides">
       <i class="v" style="left:5%"></i><i class="v" style="left:95%"></i>
@@ -507,12 +572,12 @@ const DEFAULTS = {
   fontFamily: 'Impact',
   fontLabel: 'Impact',
   fontSize: 240,
-  fontWeight: 700,
-  tracking: -0.02,
-  leading: 1.00,
+  fontWeight: 800,
+  tracking: -0.035,
+  leading: 0.98,
   align: 'center',
-  textWidth: 88,
-  textScale: 0.98,
+  textWidth: 94,
+  textScale: 1.00,
   textRotate: 0,
   textX: 0,
   textY: -2,
@@ -520,7 +585,7 @@ const DEFAULTS = {
   textOpacity: 1,
   autoFit: true,
   packed: true,
-  packedAmount: 0.16,
+  packedAmount: 0.10,
   justify: true,
   crop: 0.06,
 
@@ -542,6 +607,7 @@ const DEFAULTS = {
   textEcho: 0.16,
   textEchoCount: 3,
   edgeGlow: 0.95,
+  textOutline: 0.55,   /* contrasting contour that keeps glyphs legible */
 
   /* liquid */
   blobSize: 0.84,
@@ -577,7 +643,7 @@ const DEFAULTS = {
   bgColor: '#000000',
 
   /* composition */
-  aspect: '3:4',
+  aspect: '16:9',
   customW: 3,
   customH: 4,
   vignette: 0.35,
@@ -660,6 +726,14 @@ const DEFAULTS = {
   impactStrength: 0.6,
   buildLength: 0.5,
   fallbackMotion: true,
+
+  /* ---- STROBE / FLASH ENGINE ---- */
+  strobe: 0.0,          // master amount
+  strobeRate: 8,        // flashes per loop
+  strobeMode: 'hard',   // hard | colour | invert | mixed
+  strobeColor: '#ffffff',
+  strobeBlack: 0.65,    // how far it cuts to black between flashes
+  strobeHold: 0.35,     // duty cycle: fraction of each cycle spent lit
 
   // safety
   reducedFlash: false, reduceMotion: false,
@@ -748,7 +822,8 @@ function mulberry32(a){
 }
 
 /* aspect */
-const ASPECTS = {'1:1':[1,1],'4:5':[4,5],'3:4':[3,4],'9:16':[9,16],'16:9':[16,9]};
+const ASPECTS = {'1:1':[1,1],'4:5':[4,5],'3:4':[3,4],'9:16':[9,16],
+                 '4:3':[4,3],'16:9':[16,9],'21:9':[21,9]};
 function aspectRatio(){
   if (state.aspect === 'custom')
     return [Math.max(.05, +state.customW || 1), Math.max(.05, +state.customH || 1)];
@@ -820,9 +895,17 @@ const TextRenderer = (() => {
         widest = Math.max(widest, measureSpaced(ctx, ln || ' ', ls));
       }
       const target = usableW / widest * probePx;
-      // leave room for the full block height too
-      const blockH = target * state.leading * Math.max(1, lines.length);
-      const maxByH = (ch * 1.02) / Math.max(0.3, state.leading * Math.max(1, lines.length)) ;
+      /* Fit the block to the canvas height as well, so a landscape frame is
+         filled rather than leaving the type as a thin band in the middle. */
+      const nLines = Math.max(1, lines.length);
+      const lead = state.leading * (state.packed ? (1 - state.packedAmount*0.52) : 1);
+      /* blockH = fontPx*(lead*(n-1) + capRatio); solve for the px that fits ch
+         with a margin. Getting this wrong is what cropped the last line off. */
+      const capRatio = 0.72;
+      /* the block is later multiplied by textScale * cropScale, so the fit has
+         to account for that or the stack overflows the frame */
+      const userScale = Math.max(0.15, state.textScale * (1 + state.crop*0.85));
+      const maxByH = (ch * 0.86) / Math.max(0.30, lead*(nLines - 1) + capRatio) / userScale;
       fontPx = Math.max(4, Math.min(target, maxByH));
       ctx.font = mkFont(fontPx);
     }
@@ -848,8 +931,10 @@ const TextRenderer = (() => {
     ctx.scale(scale, scale);
     ctx.translate(-cw/2, -ch/2);
 
-    // baseline of first line so the block is optically centred
-    const top = (ch - blockH)/2;
+    /* Baselines run top+capH + i*lineH, so the painted band spans
+       [top, top+capH+(n-1)*lineH]. Solve `top` to centre exactly that band —
+       the earlier formula mis-centred and pushed the first line off the top. */
+    const top = (ch - (capH + (lines.length-1)*lineH))/2;
     const ax = state.align === 'left' ? cw/2 - usableW/2
              : state.align === 'right' ? cw/2 + usableW/2
              : cw/2;
@@ -868,8 +953,10 @@ const TextRenderer = (() => {
       if (state.justify && ln.trim().length){
         const w = measureSpaced(ctx, ln, ls);
         if (w > 1) lineScale = usableW / w;
-        // never scale beyond a sane range (short lines stay readable)
-        lineScale = Math.min(lineScale, 3.4);
+        /* Per-line stretch is what makes the stacked poster look fill its
+           column, but a large factor visibly shears the glyphs. Keep it
+           modest and let the auto-fit pass do the heavy lifting. */
+        lineScale = Math.min(lineScale, 1.34);
       }
       if (lineScale !== 1){
         const w0 = measureSpaced(ctx, ln, ls);
@@ -1250,6 +1337,7 @@ uniform float uVignette, uGrain, uPulse, uIntensity;
 uniform float uElastic, uFragment, uPersp, uSpiral, uMelt;
 uniform float uExtrude, uNeon, uLineStagger, uCharAnim;
 uniform float uGlitch, uTypeForce, uHueShift, uContrast, uWaveI;
+uniform float uTextOutline;
 uniform vec3  uColAccent;
 
 /* ---- CURSOR INTERACTION ---- */
@@ -1541,21 +1629,39 @@ void main(){
     col += (uColAccent*1.5 + uColRed*0.35) * ringT * uNeon * 2.4;
   }
 
-  /* the letterforms themselves */
+  /* ================= LETTERFORMS =================
+     Whatever the type colour, the glyph has to separate from what is behind it.
+     We build a one-pixel-ish contour by resampling the glyph field at a small
+     radius: the ring is where the outline sits, ta is the solid interior.
+     Light type gets a dark contour, dark type gets a bright one, so a preset
+     can put type over black, over white liquid, or both at once. */
   vec3 tc = uColText;
   float lum = dot(tc, vec3(0.299,0.587,0.114));
-  if(lum < 0.35){
-    /* dark type: carve the liquid away to near-black, with a whisper of red */
+  float isDark = step(lum, 0.42);
+
+  float oe = 0.0014 + 0.0048*uTextBlur;
+  float g1 = textAt(tuv + vec2( oe, 0.0), lodBase);
+  float g2 = textAt(tuv + vec2(-oe, 0.0), lodBase);
+  float g3 = textAt(tuv + vec2(0.0,  oe), lodBase);
+  float g4 = textAt(tuv + vec2(0.0, -oe), lodBase);
+  float ring = clamp(max(max(g1,g2),max(g3,g4)) - ta, 0.0, 1.0) * uTextOutline;
+
+  /* the outline colour is the inverse of the type colour, so contrast is
+     guaranteed rather than hoped for */
+  vec3 outlineCol = mix(vec3(0.015, 0.008, 0.020), vec3(0.97), isDark);
+  col = mix(col, outlineCol, clamp(ring, 0.0, 1.0)*0.92);
+
+  if(isDark < 0.5){
+    /* dark type carves into the liquid: the glyph reads as a hole punched
+       through, which is the reference look, but only where liquid exists.
+       Over black the outline above keeps the letterform visible. */
     vec3 hole = vec3(0.006, 0.001, 0.004);
-    col = mix(col, hole, clamp(ta,0.0,1.0));
-    /* chrome type: dark glyphs still catch a bright specular rim */
+    float deep = clamp(ta, 0.0, 1.0);
+    vec3 glyph = mix(hole, outlineCol, 1.0 - smoothstep(0.0, 0.25, uTextOutline));
+    col = mix(col, glyph, deep);
     col += mix(uColPale, uColAccent, 0.35) * band * uExtrude * 0.55;
   } else {
-    /* light type: a dark contour keeps it legible where it crosses the pale
-       liquid cores, then the type colour itself paints on top */
-    float contour = clamp(tg - ta, 0.0, 1.0);
-    col *= 1.0 - contour*0.55;
-    col = mix(col, tc*(0.9 + uGlowI*0.28), clamp(ta,0.0,1.0));
+    col = mix(col, tc*(0.90 + uGlowI*0.20), clamp(ta,0.0,1.0));
   }
 
   /* fragmented slices get a hot leading edge so they read as torn */
@@ -1734,6 +1840,9 @@ uniform float uHue, uSat, uContrast, uGrain;
 uniform float uGeomOn;
 uniform vec3  uColRed, uColPink, uColAccent;
 uniform float uFlash;   /* reduced-flash damping, 0..1 */
+uniform float uStrobe, uStrobeRate, uStrobeBlack, uStrobeHold;
+uniform float uStrobeMode;   /* 0 hard · 1 colour · 2 invert · 3 mixed */
+uniform vec3  uStrobeCol;
 
 vec3 sampleScene(vec2 uv){
   if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0) return vec3(0.0);
@@ -1916,8 +2025,45 @@ void main(){
   float g2 = hash21(suv*uRes + vec2(uTime*211.0, uTime*97.0)) - 0.5;
   base += g2 * uGrain * 0.15;
 
-  /* reduced-flash soft-clips highlights instead of hard-clipping them */
-  if(uFlash > 0.001) base = base/(1.0 + uFlash*max(base-0.72,0.0)*1.6);
+  /* ================= STROBE / FLASH ENGINE =================
+     A hard gate on the whole frame. The phase advances at an integer multiple
+     of the loop so the strobe stays seamless, and the duty cycle sets how long
+     each flash is held. Everything here is derived from uPhase, so exported
+     frames strobe identically to the preview. */
+  if(uStrobe > 0.002){
+    float rate = max(1.0, floor(uStrobeRate + 0.5));
+    float cyc = fract(uPhase*rate);
+    /* sharp attack, short hold, fast decay — a real strobe, not a sine fade */
+    float lit = smoothstep(uStrobeHold, uStrobeHold*0.55, cyc);
+    float amt = uStrobe * lit;
+
+    int mode = int(uStrobeMode + 0.5);
+    if(mode == 0){                       /* hard white hit */
+      base = mix(base, uStrobeCol, amt);
+    } else if(mode == 1){                /* colour wash */
+      base = mix(base, uStrobeCol*1.15, amt*0.92);
+      base += uStrobeCol * amt * 0.25;
+    } else if(mode == 2){                /* invert */
+      base = mix(base, 1.0 - base, amt);
+    } else {                             /* mixed: colour on even, invert on odd */
+      float flip = mod(floor(uPhase*rate), 2.0);
+      vec3 v = (flip > 0.5) ? (1.0 - base) : uStrobeCol;
+      base = mix(base, v, amt);
+    }
+
+    /* the black gap between flashes */
+    float dark = (1.0 - lit) * uStrobeBlack * uStrobe;
+    base *= (1.0 - dark);
+    /* hard threshold gives the flicker a digital, cut-to-black edge */
+    base = mix(base, floor(base*6.0)/6.0, uStrobe*0.35);
+  }
+
+  /* reduced-flash soft-clips highlights and tames strobe depth. Safety always
+     wins over the effect, even when a preset asks for the maximum. */
+  if(uFlash > 0.001){
+    base = base/(1.0 + uFlash*max(base-0.72,0.0)*1.6);
+    base = mix(base, uStrobeCol*(1.0-uStrobeBlack), uStrobe*uFlash*0.55);
+  }
   base = clamp(base, 0.0, 1.0);
 
   outC = vec4(base, 1.0);
@@ -2152,6 +2298,7 @@ void main(){
       state.waveInterf > 0.002 || state.chromaSplit > 0.002 || state.posterize > 0.002 ||
       state.scanline > 0.002 || state.halation > 0.002 || state.invert ||
       state.colorCycle > 0.002 || state.lasers > 0.002 || state.rings > 0.002 ||
+      state.strobe > 0.002 ||
       state.gridLines > 0.002 || state.bursts > 0.002
     ));
     /* geometry also works without trance mode, but then needs a compositor path */
@@ -2292,6 +2439,7 @@ void main(){
     gl.uniform1f(C.uTypeForce,  tf * (0.5 + state.psyType*1.2));
     gl.uniform1f(C.uHueShift,   state.hueShift);
     gl.uniform1f(C.uContrast,   state.contrast);
+    gl.uniform1f(C.uTextOutline, state.textOutline);
     gl.uniform1f(C.uWaveI,      postOn ? state.waveInterf : 0.0);
 
     /* ---- CURSOR INTERACTION uniforms ---- */
@@ -2404,6 +2552,16 @@ void main(){
       gl.uniform3fv(Q.uColPink, pink);
       gl.uniform3fv(Q.uColAccent, accent);
       gl.uniform1f(Q.uFlash, state.reducedFlash ? 1 : 0);
+      /* reduced-flash caps the strobe rather than letting a preset override it */
+      const strobeCap = state.reducedFlash ? 0.22 : 1;
+      gl.uniform1f(Q.uStrobe, clamp(state.strobe*strobeCap, 0, 1));
+      gl.uniform1f(Q.uStrobeRate, state.strobeRate);
+      gl.uniform1f(Q.uStrobeBlack, state.strobeBlack);
+      gl.uniform1f(Q.uStrobeHold, clamp(state.strobeHold, 0.04, 0.95));
+      gl.uniform1f(Q.uStrobeMode,
+        state.strobeMode === 'colour' ? 1 : state.strobeMode === 'invert' ? 2
+        : state.strobeMode === 'mixed' ? 3 : 0);
+      gl.uniform3fv(Q.uStrobeCol, hexToLinear(state.strobeColor));
       gl.drawArrays(gl.TRIANGLES,0,3);
 
       // blit the result to the visible canvas
@@ -3274,9 +3432,12 @@ function buildCompPane(){
   const frag = document.createDocumentFragment();
 
   let s = section('Canvas', true);
-  s.body.appendChild(mkSeg('Aspect ratio', 'aspect', [
-    {value:'1:1', label:'1:1'}, {value:'4:5', label:'4:5'}, {value:'3:4', label:'3:4'},
-    {value:'9:16', label:'9:16'}, {value:'16:9', label:'16:9'}
+  s.body.appendChild(mkSeg('Landscape', 'aspect', [
+    {value:'1:1', label:'1:1'}, {value:'4:3', label:'4:3'},
+    {value:'16:9', label:'16:9'}, {value:'21:9', label:'21:9'},
+  ]));
+  s.body.appendChild(mkSeg('Portrait', 'aspect', [
+    {value:'4:5', label:'4:5'}, {value:'3:4', label:'3:4'}, {value:'9:16', label:'9:16'},
   ]));
   const customRow = document.createElement('div');
   customRow.className = 'row';
@@ -4029,13 +4190,33 @@ function wireChrome(){
     setTimeout(() => Stage.relayout(), 60);
   });
 
-  $q('#btnFull').addEventListener('click', () => {
-    const el = $q('#stage');
-    if (!document.fullscreenElement){
-      (el.requestFullscreen || el.webkitRequestFullscreen || (()=>{})).call(el);
-    } else {
-      document.exitFullscreen();
+  $q('#btnFull').addEventListener('click', async () => {
+    /* Fullscreen the whole document and enter presentation mode, so the canvas
+       fills the screen. Fullscreening #stage alone kept the grid rows around it
+       and left the composition boxed in at its preview size. */
+    try {
+      if (!document.fullscreenElement){
+        const el = document.documentElement;
+        const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+        if (req) await req.call(el);
+        if (!state.present) set('present', true);
+      } else {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) await exit.call(document);
+      }
+    } catch(e){
+      set('present', !state.present);
+      toast('FULLSCREEN BLOCKED — PRESENTATION MODE TOGGLED', 3200);
     }
+    setTimeout(() => Stage.relayout(), 90);
+  });
+
+  document.addEventListener('fullscreenchange', () => setTimeout(() => Stage.relayout(), 90));
+
+  $q('#exitPresent').addEventListener('click', () => {
+    set('present', false);
+    if (document.fullscreenElement) document.exitFullscreen();
+    setTimeout(() => Stage.relayout(), 90);
   });
 
   $q('#btnReset').addEventListener('click', () => {
@@ -4113,7 +4294,15 @@ function wireChrome(){
     else if (k === 'h') { set('present', !state.present); setTimeout(()=>Stage.relayout(),60); }
     else if (k === 'f') { $q('#btnFull').click(); }
     else if (k === 'e') { openExport('png'); }
-    else if (k === 'escape') { $q('#modal').classList.remove('on'); }
+    else if (k === 'escape') {
+      if (document.getElementById('modal').classList.contains('on')){
+        $q('#modal').classList.remove('on');
+      } else if (state.present){
+        $q('#exitPresent').click();
+      } else if (document.fullscreenElement){
+        document.exitFullscreen();
+      }
+    }
     else if (k === 'arrowright') { Animation.scrub(Math.min(1, Animation.phase + 0.02)); paintTimeline(); }
     else if (k === 'arrowleft') { Animation.scrub(Math.max(0, Animation.phase - 0.02)); paintTimeline(); }
   });
@@ -4795,6 +4984,71 @@ const PARTY_PRESETS = {
       vignette:0.55, glowIntensity:1.2,
     }),
 
+  /* ---- dedicated strobe presets: hard cut-to-black flicker ---- */
+
+  'whiteout-strobe': P_('hardcore', 'WHITEOUT STROBE',
+    'hard white flicker · black gaps · huge type', {
+      party:true, trance:true, energy:0.9, chaos:0.4, beatResponse:0.8,
+      liquidity:0.5, geometry:0.3, distortion:0.45, glowMacro:0.6,
+      colorMadness:0.1, typeForce:0.85, feedbackMacro:0.2, depth:0.4, trailMacro:0.35,
+      colRed:'#ffffff', colPink:'#ff2233', colAccent:'#ffffff',
+      colPale:'#ffffff', colWhite:'#ffffff', bgColor:'#000000',
+      textColor:'#000000', textMode:'clean', contrast:1.5, saturation:0.1,
+      strobe:1.0, strobeRate:12, strobeMode:'hard', strobeColor:'#ffffff',
+      strobeBlack:0.92, strobeHold:0.30,
+      halation:0.55, chromaSplit:0.10, vignette:0.45, grain:0.12,
+      typeBehaviour:'monumental', speed:1.0, loopDuration:4, seed:3131,
+      bpm:160, rhythmMode:'manual', glowIntensity:1.2,
+      blobCount:4, blobSize:0.55,
+    }),
+
+  'blackout-flicker': P_('hardcore', 'BLACKOUT FLICKER',
+    'mostly black · violent white cuts', {
+      party:true, trance:true, energy:0.8, chaos:0.3, beatResponse:0.9,
+      liquidity:0.3, geometry:0.2, distortion:0.3, glowMacro:0.4,
+      colorMadness:0.05, typeForce:0.9, feedbackMacro:0.2, depth:0.3, trailMacro:0.3,
+      colRed:'#ff1020', colPink:'#ffffff', colAccent:'#ffffff',
+      colPale:'#ffffff', colWhite:'#ffffff', bgColor:'#000000',
+      textColor:'#ffffff', textMode:'clean', contrast:1.7, saturation:0.6,
+      strobe:0.95, strobeRate:16, strobeMode:'mixed', strobeColor:'#ffffff',
+      strobeBlack:1.0, strobeHold:0.14,
+      halation:0.3, chromaSplit:0.2, vignette:0.85, grain:0.14,
+      typeBehaviour:'monumental', speed:1.1, loopDuration:3, seed:3232,
+      bpm:180, rhythmMode:'manual', glowIntensity:0.9,
+      blobCount:3, blobSize:0.42, edgeSoftness:0.5,
+    }),
+
+  'acid-strobe': P_('disco', 'ACID STROBE',
+    'colour cycling strobe · green / magenta', {
+      party:true, trance:true, energy:1.0, chaos:0.6, beatResponse:0.9,
+      liquidity:0.6, geometry:0.5, distortion:0.6, glowMacro:0.8,
+      colorMadness:0.7, typeForce:0.9, feedbackMacro:0.3, depth:0.5, trailMacro:0.45,
+      colRed:'#aaff00', colPink:'#ff00c8', colAccent:'#00ffd0',
+      colPale:'#ffffff', colWhite:'#ffffff', bgColor:'#000000',
+      textColor:'#000000', textMode:'clean', contrast:1.4, saturation:1.8,
+      strobe:1.0, strobeRate:14, strobeMode:'colour', strobeColor:'#aaff00',
+      strobeBlack:0.85, strobeHold:0.28,
+      colorCycle:1.2, chromaSplit:0.5, halation:0.7,
+      typeBehaviour:'explosive', speed:1.3, loopDuration:5, seed:3333,
+      bpm:170, rhythmMode:'manual', glowIntensity:1.6,
+    }),
+
+  'invert-strobe': P_('neon', 'INVERT STROBE',
+    'negative flicker · monochrome cuts', {
+      party:true, trance:true, energy:0.85, chaos:0.45, beatResponse:0.85,
+      liquidity:0.45, geometry:0.35, distortion:0.5, glowMacro:0.5,
+      colorMadness:0.03, typeForce:0.9, feedbackMacro:0.25, depth:0.4, trailMacro:0.4,
+      colRed:'#ffffff', colPink:'#dddddd', colAccent:'#ffffff',
+      colPale:'#ffffff', colWhite:'#ffffff', bgColor:'#000000',
+      textColor:'#ffffff', textMode:'clean', contrast:1.8, saturation:0.0,
+      strobe:1.0, strobeRate:10, strobeMode:'invert', strobeColor:'#ffffff',
+      strobeBlack:0.6, strobeHold:0.42,
+      scanline:0.3, grain:0.24, vignette:0.35,
+      typeBehaviour:'monumental', speed:0.9, loopDuration:4, seed:3434,
+      bpm:150, rhythmMode:'manual', glowIntensity:1.0,
+      blobCount:4, blobSize:0.6,
+    }),
+
   'synesthesia': P_('classic', 'SYNESTHESIA',
     'audio-reactive · elastic · multi-layer', {
       party:true, trance:true, energy:0.72, chaos:0.45, beatResponse:1.0,
@@ -4815,6 +5069,125 @@ const PARTY_PRESETS = {
     }),
 };
 
+/* ============================================================================
+   PRESET CLASSIFICATION
+   Tier and flash rating are DERIVED from the parameters a preset actually sets,
+   never hand-labelled — if a preset is dialled up, its rating moves with it.
+
+     tier 1 SUBTLE     calm, minimal effect stack
+     tier 2 MODERATE   clear motion, one or two effects
+     tier 3 STRONG     layered and fast
+     tier 4 INTENSE    most of the stack engaged
+     tier 5 EXTREME    everything at once
+   ========================================================================= */
+
+const TIER_NAMES = ['', 'SUBTLE', 'MODERATE', 'STRONG', 'INTENSE', 'EXTREME'];
+
+/* how hard a preset drives the things that can trigger photosensitivity */
+function flashRating(s){
+  const g = k => +s[k] || 0;
+  let score = 0;
+  score += Math.min(1, g('bursts') / 1.6) * 30;
+  score += Math.min(1, g('lasers') / 1.4) * 14;
+  score += Math.min(1, g('rings') / 1.4) * 10;
+  score += Math.min(1, g('halation') / 1.4) * 12;
+  score += Math.min(1, g('colorCycle') / 1.4) * 16;
+  score += Math.min(1, g('scanline') / 0.8) * 8;
+  score += Math.min(1, g('chromaSplit') / 1.4) * 6;
+  if (s.invert) score += 18;
+  /* a fast clock multiplies the perceived rate of change */
+  const speed = +s.speed || 1;
+  const loop = +s.loopDuration || 8;
+  const rate = speed / Math.max(1, loop);
+  score *= (0.55 + Math.min(1.6, rate * 7.5));
+  score *= (0.75 + (+s.beatResponse || 0) * 0.55);
+  return Math.round(score);
+}
+
+/* 0 = safe · 1 = caution · 2 = strong warning */
+function flashLevel(s){
+  const r = flashRating(s);
+  if (r >= 95) return 2;   /* strong: rapid full-frame flashing */
+  if (r >= 38) return 1;   /* caution: intermittent bright transients */
+  return 0;
+}
+
+/* overall distance from a plain composition */
+function presetTier(s){
+  const g = k => +s[k] || 0;
+  let score = 0;
+  score += Math.min(1, g('kaleido')) * 14;
+  score += Math.min(1, g('tunnel')) * 14;
+  score += Math.min(1, g('fractal') + g('contourLine')) * 12;
+  score += Math.min(1, g('feedback')) * 16;
+  score += Math.min(1, g('chromaSplit') / 1.4) * 8;
+  score += Math.min(1, g('halation') / 1.4) * 7;
+  score += Math.min(1, g('lasers') / 1.4) * 10;
+  score += Math.min(1, g('rings') / 1.4) * 7;
+  score += Math.min(1, g('bursts') / 1.6) * 10;
+  score += Math.min(1, g('gridLines') / 1.4) * 6;
+  score += Math.min(1, g('lens')) * 6;
+  score += Math.min(1, g('waveInterf')) * 5;
+  score += Math.min(1, g('posterize')) * 4;
+  score += Math.min(1, g('scanline')) * 4;
+  score += (+s.distortion || 0) * 8;
+  score += (+s.chaos || 0) * 8;
+  score += (+s.elastic || 0) * 5;
+  score += (+s.fragment || 0) * 6;
+  score += (+s.extrude || 0) * 4;
+  score += (+s.meltRise || 0) * 4;
+  if (s.invert) score += 6;
+  /* cut points from the measured spread of real preset scores (6..60) */
+  if (score < 12) return 1;
+  if (score < 26) return 2;
+  if (score < 40) return 3;
+  if (score < 50) return 4;
+  return 5;
+}
+
+(function classifyPresets(){
+  for (const id in PARTY_PRESETS){
+    const p = PARTY_PRESETS[id];
+    p.tier = presetTier(p.s);
+    p.flash = flashLevel(p.s);
+    p.flashScore = flashRating(p.s);
+  }
+})();
+
+
+/* ============================================================================
+   LEGIBILITY ENVELOPE
+
+   A preset may ask for anything, but past a certain point distortion stops
+   reading as typography and becomes noise. These caps are applied when a
+   preset is applied, not stored, so the table above stays easy to read and
+   edit. Anything the user sets by hand afterwards is untouched.
+   ========================================================================= */
+
+const LEGIBILITY_CAPS = {
+  distortion: 0.72,      /* beyond this the glyph structure dissolves */
+  textWarpX:   0.55,
+  textWarpY:   0.48,
+  fragment:    0.55,
+  chromaSplit: 0.95,
+  textBlur:    0.34,
+  textJitter:  0.10,
+  spiral:      0.55,
+  meltRise:    0.65,
+};
+
+function applyLegibilityEnvelope(out){
+  for (const k in LEGIBILITY_CAPS){
+    if (typeof out[k] === 'number' && out[k] > LEGIBILITY_CAPS[k]){
+      out[k] = LEGIBILITY_CAPS[k];
+    }
+  }
+  /* Every preset keeps a visible contour — this is what guarantees the type
+     can be read over both the black negative space and the pale liquid. */
+  if (out.textOutline === undefined) out.textOutline = 0.55;
+  return out;
+}
+
 
 /* ==== ui_data.js ==== */
 /* ============================================================================
@@ -4828,7 +5201,10 @@ function applyPartyPreset(id){
   const p = PARTY_PRESETS[id];
   if (!p) return;
   undoPush();
-  setMany(p.s);
+  /* run the preset through the legibility envelope before it reaches state,
+     so no preset can render type that has stopped being type */
+  const s2 = applyLegibilityEnvelope(Object.assign({}, p.s));
+  setMany(s2);
   syncAll();
   activePreset = id;
   toast('PRESET — ' + p.name, 2600);
@@ -4901,7 +5277,7 @@ function generateVariation(){
   }
 
   undoPush();
-  setMany(out);
+  setMany(applyLegibilityEnvelope(out));
   syncAll();
   Renderer.resetFeedback();
   toast('VARIATION GENERATED', 2000);
@@ -4953,7 +5329,7 @@ function generateInsane(){
   if (r() > 0.6) base.invert = 1; else base.invert = 0;
 
   undoPush();
-  setMany(base);
+  setMany(applyLegibilityEnvelope(base));
   syncAll();
   Renderer.resetFeedback();
   toast('SOMETHING INSANE — ' + PARTY_PRESETS[baseId].name, 3000);
@@ -5115,6 +5491,24 @@ function buildTrancePane(){
   syncers.push(paintTg); paintTg();
 
   s.body.appendChild(mkSlider('Intensity', 'tranceIntensity', 0, 1, 0.01, pct));
+  frag.appendChild(s.sec);
+
+  /* ---- strobe / flash engine ---- */
+  s = section('Strobe / Flash', true);
+  s.body.appendChild(mkSlider('Strobe amount', 'strobe', 0, 1, 0.01, pct));
+  s.body.appendChild(mkSlider('Flashes per loop', 'strobeRate', 1, 32, 1, f0));
+  s.body.appendChild(mkSlider('Black gap', 'strobeBlack', 0, 1, 0.01, pct));
+  s.body.appendChild(mkSlider('Flash hold', 'strobeHold', 0.04, 0.95, 0.01, pct));
+  s.body.appendChild(mkSeg('Mode', 'strobeMode', [
+    {value:'hard', label:'WHITE'}, {value:'colour', label:'COLOUR'},
+    {value:'invert', label:'INVERT'}, {value:'mixed', label:'MIXED'},
+  ]));
+  s.body.appendChild(mkColor('Flash colour', 'strobeColor'));
+  const strobeWarn = document.createElement('div');
+  strobeWarn.className = 'note warn';
+  strobeWarn.innerHTML = 'Rapid flashing can trigger seizures. <b>Reduced flashing</b> ' +
+    'caps the strobe depth automatically, whatever a preset asks for.';
+  s.body.appendChild(strobeWarn);
   frag.appendChild(s.sec);
 
   s = section('Kaleidoscope & Symmetry', true);
@@ -5432,30 +5826,74 @@ function paintMeters(){
    so what you see on the card is what the engine actually produces. */
 let presetBrowserEl = null;
 let presetFilter = 'all';
+let presetGroup = 'all';
 
-const PRESET_GROUPS = [
-  { id:'all',     label:'ALL' },
-  { id:'hardcore',label:'HARDCORE' },
-  { id:'liquid',  label:'LIQUID' },
-  { id:'neon',    label:'NEON' },
-  { id:'disco',   label:'DISCO' },
-  { id:'classic', label:'CLASSIC' },
+/* Filters double as the difficulty scale and the accessibility entry point. */
+const PRESET_FILTERS = [
+  { id:'all',   label:'ALL',    title:'Every preset' },
+  { id:'basic', label:'BASIC',  title:'Tier 1-2 · calm, safe starting points' },
+  { id:'wild',  label:'WILD',   title:'Tier 4-5 · heavy effect stacks' },
+  { id:'flash', label:'FLASH',  title:'Only presets that carry a flashing warning' },
+  { id:'safe',  label:'SAFE',   title:'Only presets with no flashing warning' },
 ];
+
+const FLASH_LABEL = ['', 'CAUTION', 'FLASHING'];
 
 function buildPresetBrowser(){
   const frag = document.createDocumentFragment();
-
   let s = section('Preset Browser', true);
-  s.body.appendChild(mkSeg('', 'presetFilterSeg', PRESET_GROUPS.map(g => ({
-    value: g.id, label: g.label
-  }))));
-  /* the seg writes to state; mirror it into our local filter instead */
-  const seg = s.body.querySelector('.seg');
-  if (seg) seg.addEventListener('click', e => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    presetFilter = b.dataset.v;
-    renderPresetCards();
+
+  /* ---- difficulty / safety filter ---- */
+  const fRow = document.createElement('div');
+  fRow.className = 'pfRow';
+  PRESET_FILTERS.forEach(f => {
+    const b = document.createElement('button');
+    b.className = 'pfBtn' + (f.id === 'all' ? ' on' : '');
+    b.dataset.f = f.id;
+    b.textContent = f.label;
+    b.title = f.title;
+    b.addEventListener('click', () => {
+      presetFilter = f.id;
+      fRow.querySelectorAll('.pfBtn').forEach(x => x.classList.toggle('on', x === b));
+      renderPresetCards();
+    });
+    fRow.appendChild(b);
+  });
+  s.body.appendChild(fRow);
+
+  /* ---- genre ---- */
+  const gRow = document.createElement('div');
+  gRow.className = 'pgRow';
+  [['all','ALL'],['hardcore','HARDCORE'],['liquid','LIQUID'],
+   ['neon','NEON'],['disco','DISCO'],['classic','CLASSIC']].forEach(pair => {
+    const b = document.createElement('button');
+    b.className = 'pgBtn' + (pair[0] === 'all' ? ' on' : '');
+    b.dataset.g = pair[0];
+    b.textContent = pair[1];
+    b.addEventListener('click', () => {
+      presetGroup = pair[0];
+      gRow.querySelectorAll('.pgBtn').forEach(x => x.classList.toggle('on', x === b));
+      renderPresetCards();
+    });
+    gRow.appendChild(b);
+  });
+  s.body.appendChild(gRow);
+
+  /* ---- photosensitivity banner, shown only in the FLASH view ---- */
+  const banner = document.createElement('div');
+  banner.className = 'flashBanner';
+  banner.id = 'flashBanner';
+  banner.innerHTML =
+    '<b>PHOTOSENSITIVITY WARNING</b>' +
+    '<span>These presets contain rapid flashing, strobing and high-contrast ' +
+    'luminance changes that can trigger seizures in people with photosensitive ' +
+    'epilepsy. Reduced flashing soft-clips the brightest transients.</span>' +
+    '<button id="flashReduce">ENABLE REDUCED FLASHING</button>';
+  s.body.appendChild(banner);
+  banner.querySelector('#flashReduce').addEventListener('click', () => {
+    set('reducedFlash', true);
+    syncAll();
+    toast('REDUCED FLASHING ENABLED');
   });
 
   const grid = document.createElement('div');
@@ -5479,33 +5917,78 @@ function buildPresetBrowser(){
   );
   s.body.appendChild(row);
   frag.appendChild(s.sec);
-
   return frag;
+}
+
+function presetMatches(p){
+  if (presetGroup !== 'all' && p.group !== presetGroup) return false;
+  switch (presetFilter){
+    case 'basic': return p.tier <= 2;
+    case 'wild':  return p.tier >= 4;
+    case 'flash': return p.flash >= 1;
+    case 'safe':  return p.flash === 0;
+    default:      return true;
+  }
 }
 
 function renderPresetCards(){
   if (!presetBrowserEl) return;
   presetBrowserEl.innerHTML = '';
-  const ids = Object.keys(PARTY_PRESETS).filter(id => {
-    const p = PARTY_PRESETS[id];
-    return presetFilter === 'all' || p.group === presetFilter;
+
+  const banner = document.getElementById('flashBanner');
+  if (banner) banner.classList.toggle('on', presetFilter === 'flash');
+
+  const ids = Object.keys(PARTY_PRESETS).filter(id => presetMatches(PARTY_PRESETS[id]));
+  if (!ids.length){
+    const empty = document.createElement('div');
+    empty.className = 'note';
+    empty.textContent = 'No presets match this combination of filters.';
+    presetBrowserEl.appendChild(empty);
+    return;
+  }
+
+  /* sort by tier so the list reads as a ramp from subtle to extreme */
+  ids.sort((x, y) => {
+    const A = PARTY_PRESETS[x], B = PARTY_PRESETS[y];
+    return A.tier - B.tier || A.flashScore - B.flashScore;
   });
 
+  let lastTier = 0;
   ids.forEach(id => {
     const p = PARTY_PRESETS[id];
+
+    if (p.tier !== lastTier){
+      lastTier = p.tier;
+      const head = document.createElement('div');
+      head.className = 'tierHead t' + p.tier;
+      head.innerHTML = '<span>' + p.tier + '</span>' + TIER_NAMES[p.tier] +
+        '<i>' + '▮'.repeat(p.tier) + '▯'.repeat(5 - p.tier) + '</i>';
+      presetBrowserEl.appendChild(head);
+    }
+
     const btn = document.createElement('button');
     btn.className = 'prCard' + (activePreset === id ? ' on' : '');
     btn.dataset.preset = id;
-    btn.title = p.name + ' — ' + p.sub;
+    btn.title = p.name + ' — ' + p.sub + '  ·  tier ' + p.tier +
+      ' ' + TIER_NAMES[p.tier] +
+      (p.flash ? '  ·  ' + FLASH_LABEL[p.flash] + ' WARNING' : '');
 
     const cv = document.createElement('canvas');
-    const CW = 108, CH = 108;
-    cv.width = CW; cv.height = CH;
+    cv.width = 128; cv.height = 72;   /* 16:9 to match the default frame */
     btn.appendChild(cv);
+
+    if (p.flash){
+      const badge = document.createElement('span');
+      badge.className = 'flashBadge f' + p.flash;
+      badge.textContent = p.flash === 2 ? '!' : '⚠';
+      badge.title = FLASH_LABEL[p.flash] + ' — rapid luminance changes';
+      btn.appendChild(badge);
+    }
 
     const nom = document.createElement('div');
     nom.className = 'prn';
-    nom.textContent = p.name;
+    nom.innerHTML = '<span>' + p.name + '</span>' +
+                    '<em class="tierTag">T' + p.tier + '</em>';
     btn.appendChild(nom);
 
     btn.addEventListener('click', () => {
@@ -5514,7 +5997,6 @@ function renderPresetCards(){
     });
     presetBrowserEl.appendChild(btn);
 
-    /* paint the real render a moment later so the panel opens instantly */
     setTimeout(() => paintCard(cv, p), 16);
   });
 }

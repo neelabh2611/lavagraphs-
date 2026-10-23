@@ -483,9 +483,12 @@ function buildCompPane(){
   const frag = document.createDocumentFragment();
 
   let s = section('Canvas', true);
-  s.body.appendChild(mkSeg('Aspect ratio', 'aspect', [
-    {value:'1:1', label:'1:1'}, {value:'4:5', label:'4:5'}, {value:'3:4', label:'3:4'},
-    {value:'9:16', label:'9:16'}, {value:'16:9', label:'16:9'}
+  s.body.appendChild(mkSeg('Landscape', 'aspect', [
+    {value:'1:1', label:'1:1'}, {value:'4:3', label:'4:3'},
+    {value:'16:9', label:'16:9'}, {value:'21:9', label:'21:9'},
+  ]));
+  s.body.appendChild(mkSeg('Portrait', 'aspect', [
+    {value:'4:5', label:'4:5'}, {value:'3:4', label:'3:4'}, {value:'9:16', label:'9:16'},
   ]));
   const customRow = document.createElement('div');
   customRow.className = 'row';
@@ -1238,13 +1241,33 @@ function wireChrome(){
     setTimeout(() => Stage.relayout(), 60);
   });
 
-  $q('#btnFull').addEventListener('click', () => {
-    const el = $q('#stage');
-    if (!document.fullscreenElement){
-      (el.requestFullscreen || el.webkitRequestFullscreen || (()=>{})).call(el);
-    } else {
-      document.exitFullscreen();
+  $q('#btnFull').addEventListener('click', async () => {
+    /* Fullscreen the whole document and enter presentation mode, so the canvas
+       fills the screen. Fullscreening #stage alone kept the grid rows around it
+       and left the composition boxed in at its preview size. */
+    try {
+      if (!document.fullscreenElement){
+        const el = document.documentElement;
+        const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+        if (req) await req.call(el);
+        if (!state.present) set('present', true);
+      } else {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) await exit.call(document);
+      }
+    } catch(e){
+      set('present', !state.present);
+      toast('FULLSCREEN BLOCKED — PRESENTATION MODE TOGGLED', 3200);
     }
+    setTimeout(() => Stage.relayout(), 90);
+  });
+
+  document.addEventListener('fullscreenchange', () => setTimeout(() => Stage.relayout(), 90));
+
+  $q('#exitPresent').addEventListener('click', () => {
+    set('present', false);
+    if (document.fullscreenElement) document.exitFullscreen();
+    setTimeout(() => Stage.relayout(), 90);
   });
 
   $q('#btnReset').addEventListener('click', () => {
@@ -1322,7 +1345,15 @@ function wireChrome(){
     else if (k === 'h') { set('present', !state.present); setTimeout(()=>Stage.relayout(),60); }
     else if (k === 'f') { $q('#btnFull').click(); }
     else if (k === 'e') { openExport('png'); }
-    else if (k === 'escape') { $q('#modal').classList.remove('on'); }
+    else if (k === 'escape') {
+      if (document.getElementById('modal').classList.contains('on')){
+        $q('#modal').classList.remove('on');
+      } else if (state.present){
+        $q('#exitPresent').click();
+      } else if (document.fullscreenElement){
+        document.exitFullscreen();
+      }
+    }
     else if (k === 'arrowright') { Animation.scrub(Math.min(1, Animation.phase + 0.02)); paintTimeline(); }
     else if (k === 'arrowleft') { Animation.scrub(Math.max(0, Animation.phase - 0.02)); paintTimeline(); }
   });

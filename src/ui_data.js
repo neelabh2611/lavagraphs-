@@ -9,7 +9,10 @@ function applyPartyPreset(id){
   const p = PARTY_PRESETS[id];
   if (!p) return;
   undoPush();
-  setMany(p.s);
+  /* run the preset through the legibility envelope before it reaches state,
+     so no preset can render type that has stopped being type */
+  const s2 = applyLegibilityEnvelope(Object.assign({}, p.s));
+  setMany(s2);
   syncAll();
   activePreset = id;
   toast('PRESET — ' + p.name, 2600);
@@ -82,7 +85,7 @@ function generateVariation(){
   }
 
   undoPush();
-  setMany(out);
+  setMany(applyLegibilityEnvelope(out));
   syncAll();
   Renderer.resetFeedback();
   toast('VARIATION GENERATED', 2000);
@@ -134,7 +137,7 @@ function generateInsane(){
   if (r() > 0.6) base.invert = 1; else base.invert = 0;
 
   undoPush();
-  setMany(base);
+  setMany(applyLegibilityEnvelope(base));
   syncAll();
   Renderer.resetFeedback();
   toast('SOMETHING INSANE — ' + PARTY_PRESETS[baseId].name, 3000);

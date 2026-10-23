@@ -12,12 +12,12 @@ const DEFAULTS = {
   fontFamily: 'Impact',
   fontLabel: 'Impact',
   fontSize: 240,
-  fontWeight: 700,
-  tracking: -0.02,
-  leading: 1.00,
+  fontWeight: 800,
+  tracking: -0.035,
+  leading: 0.98,
   align: 'center',
-  textWidth: 88,
-  textScale: 0.98,
+  textWidth: 94,
+  textScale: 1.00,
   textRotate: 0,
   textX: 0,
   textY: -2,
@@ -25,7 +25,7 @@ const DEFAULTS = {
   textOpacity: 1,
   autoFit: true,
   packed: true,
-  packedAmount: 0.16,
+  packedAmount: 0.10,
   justify: true,
   crop: 0.06,
 
@@ -47,6 +47,7 @@ const DEFAULTS = {
   textEcho: 0.16,
   textEchoCount: 3,
   edgeGlow: 0.95,
+  textOutline: 0.55,   /* contrasting contour that keeps glyphs legible */
 
   /* liquid */
   blobSize: 0.84,
@@ -82,7 +83,7 @@ const DEFAULTS = {
   bgColor: '#000000',
 
   /* composition */
-  aspect: '3:4',
+  aspect: '16:9',
   customW: 3,
   customH: 4,
   vignette: 0.35,
@@ -165,6 +166,14 @@ const DEFAULTS = {
   impactStrength: 0.6,
   buildLength: 0.5,
   fallbackMotion: true,
+
+  /* ---- STROBE / FLASH ENGINE ---- */
+  strobe: 0.0,          // master amount
+  strobeRate: 8,        // flashes per loop
+  strobeMode: 'hard',   // hard | colour | invert | mixed
+  strobeColor: '#ffffff',
+  strobeBlack: 0.65,    // how far it cuts to black between flashes
+  strobeHold: 0.35,     // duty cycle: fraction of each cycle spent lit
 
   // safety
   reducedFlash: false, reduceMotion: false,
@@ -253,7 +262,8 @@ function mulberry32(a){
 }
 
 /* aspect */
-const ASPECTS = {'1:1':[1,1],'4:5':[4,5],'3:4':[3,4],'9:16':[9,16],'16:9':[16,9]};
+const ASPECTS = {'1:1':[1,1],'4:5':[4,5],'3:4':[3,4],'9:16':[9,16],
+                 '4:3':[4,3],'16:9':[16,9],'21:9':[21,9]};
 function aspectRatio(){
   if (state.aspect === 'custom')
     return [Math.max(.05, +state.customW || 1), Math.max(.05, +state.customH || 1)];
@@ -325,9 +335,17 @@ const TextRenderer = (() => {
         widest = Math.max(widest, measureSpaced(ctx, ln || ' ', ls));
       }
       const target = usableW / widest * probePx;
-      // leave room for the full block height too
-      const blockH = target * state.leading * Math.max(1, lines.length);
-      const maxByH = (ch * 1.02) / Math.max(0.3, state.leading * Math.max(1, lines.length)) ;
+      /* Fit the block to the canvas height as well, so a landscape frame is
+         filled rather than leaving the type as a thin band in the middle. */
+      const nLines = Math.max(1, lines.length);
+      const lead = state.leading * (state.packed ? (1 - state.packedAmount*0.52) : 1);
+      /* blockH = fontPx*(lead*(n-1) + capRatio); solve for the px that fits ch
+         with a margin. Getting this wrong is what cropped the last line off. */
+      const capRatio = 0.72;
+      /* the block is later multiplied by textScale * cropScale, so the fit has
+         to account for that or the stack overflows the frame */
+      const userScale = Math.max(0.15, state.textScale * (1 + state.crop*0.85));
+      const maxByH = (ch * 0.86) / Math.max(0.30, lead*(nLines - 1) + capRatio) / userScale;
       fontPx = Math.max(4, Math.min(target, maxByH));
       ctx.font = mkFont(fontPx);
     }
@@ -353,8 +371,10 @@ const TextRenderer = (() => {
     ctx.scale(scale, scale);
     ctx.translate(-cw/2, -ch/2);
 
-    // baseline of first line so the block is optically centred
-    const top = (ch - blockH)/2;
+    /* Baselines run top+capH + i*lineH, so the painted band spans
+       [top, top+capH+(n-1)*lineH]. Solve `top` to centre exactly that band —
+       the earlier formula mis-centred and pushed the first line off the top. */
+    const top = (ch - (capH + (lines.length-1)*lineH))/2;
     const ax = state.align === 'left' ? cw/2 - usableW/2
              : state.align === 'right' ? cw/2 + usableW/2
              : cw/2;
@@ -373,8 +393,10 @@ const TextRenderer = (() => {
       if (state.justify && ln.trim().length){
         const w = measureSpaced(ctx, ln, ls);
         if (w > 1) lineScale = usableW / w;
-        // never scale beyond a sane range (short lines stay readable)
-        lineScale = Math.min(lineScale, 3.4);
+        /* Per-line stretch is what makes the stacked poster look fill its
+           column, but a large factor visibly shears the glyphs. Keep it
+           modest and let the auto-fit pass do the heavy lifting. */
+        lineScale = Math.min(lineScale, 1.34);
       }
       if (lineScale !== 1){
         const w0 = measureSpaced(ctx, ln, ls);
@@ -755,6 +777,7 @@ uniform float uVignette, uGrain, uPulse, uIntensity;
 uniform float uElastic, uFragment, uPersp, uSpiral, uMelt;
 uniform float uExtrude, uNeon, uLineStagger, uCharAnim;
 uniform float uGlitch, uTypeForce, uHueShift, uContrast, uWaveI;
+uniform float uTextOutline;
 uniform vec3  uColAccent;
 
 /* ---- CURSOR INTERACTION ---- */
@@ -1046,21 +1069,39 @@ void main(){
     col += (uColAccent*1.5 + uColRed*0.35) * ringT * uNeon * 2.4;
   }
 
-  /* the letterforms themselves */
+  /* ================= LETTERFORMS =================
+     Whatever the type colour, the glyph has to separate from what is behind it.
+     We build a one-pixel-ish contour by resampling the glyph field at a small
+     radius: the ring is where the outline sits, ta is the solid interior.
+     Light type gets a dark contour, dark type gets a bright one, so a preset
+     can put type over black, over white liquid, or both at once. */
   vec3 tc = uColText;
   float lum = dot(tc, vec3(0.299,0.587,0.114));
-  if(lum < 0.35){
-    /* dark type: carve the liquid away to near-black, with a whisper of red */
+  float isDark = step(lum, 0.42);
+
+  float oe = 0.0014 + 0.0048*uTextBlur;
+  float g1 = textAt(tuv + vec2( oe, 0.0), lodBase);
+  float g2 = textAt(tuv + vec2(-oe, 0.0), lodBase);
+  float g3 = textAt(tuv + vec2(0.0,  oe), lodBase);
+  float g4 = textAt(tuv + vec2(0.0, -oe), lodBase);
+  float ring = clamp(max(max(g1,g2),max(g3,g4)) - ta, 0.0, 1.0) * uTextOutline;
+
+  /* the outline colour is the inverse of the type colour, so contrast is
+     guaranteed rather than hoped for */
+  vec3 outlineCol = mix(vec3(0.015, 0.008, 0.020), vec3(0.97), isDark);
+  col = mix(col, outlineCol, clamp(ring, 0.0, 1.0)*0.92);
+
+  if(isDark < 0.5){
+    /* dark type carves into the liquid: the glyph reads as a hole punched
+       through, which is the reference look, but only where liquid exists.
+       Over black the outline above keeps the letterform visible. */
     vec3 hole = vec3(0.006, 0.001, 0.004);
-    col = mix(col, hole, clamp(ta,0.0,1.0));
-    /* chrome type: dark glyphs still catch a bright specular rim */
+    float deep = clamp(ta, 0.0, 1.0);
+    vec3 glyph = mix(hole, outlineCol, 1.0 - smoothstep(0.0, 0.25, uTextOutline));
+    col = mix(col, glyph, deep);
     col += mix(uColPale, uColAccent, 0.35) * band * uExtrude * 0.55;
   } else {
-    /* light type: a dark contour keeps it legible where it crosses the pale
-       liquid cores, then the type colour itself paints on top */
-    float contour = clamp(tg - ta, 0.0, 1.0);
-    col *= 1.0 - contour*0.55;
-    col = mix(col, tc*(0.9 + uGlowI*0.28), clamp(ta,0.0,1.0));
+    col = mix(col, tc*(0.90 + uGlowI*0.20), clamp(ta,0.0,1.0));
   }
 
   /* fragmented slices get a hot leading edge so they read as torn */
@@ -1239,6 +1280,9 @@ uniform float uHue, uSat, uContrast, uGrain;
 uniform float uGeomOn;
 uniform vec3  uColRed, uColPink, uColAccent;
 uniform float uFlash;   /* reduced-flash damping, 0..1 */
+uniform float uStrobe, uStrobeRate, uStrobeBlack, uStrobeHold;
+uniform float uStrobeMode;   /* 0 hard · 1 colour · 2 invert · 3 mixed */
+uniform vec3  uStrobeCol;
 
 vec3 sampleScene(vec2 uv){
   if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0) return vec3(0.0);
@@ -1421,8 +1465,45 @@ void main(){
   float g2 = hash21(suv*uRes + vec2(uTime*211.0, uTime*97.0)) - 0.5;
   base += g2 * uGrain * 0.15;
 
-  /* reduced-flash soft-clips highlights instead of hard-clipping them */
-  if(uFlash > 0.001) base = base/(1.0 + uFlash*max(base-0.72,0.0)*1.6);
+  /* ================= STROBE / FLASH ENGINE =================
+     A hard gate on the whole frame. The phase advances at an integer multiple
+     of the loop so the strobe stays seamless, and the duty cycle sets how long
+     each flash is held. Everything here is derived from uPhase, so exported
+     frames strobe identically to the preview. */
+  if(uStrobe > 0.002){
+    float rate = max(1.0, floor(uStrobeRate + 0.5));
+    float cyc = fract(uPhase*rate);
+    /* sharp attack, short hold, fast decay — a real strobe, not a sine fade */
+    float lit = smoothstep(uStrobeHold, uStrobeHold*0.55, cyc);
+    float amt = uStrobe * lit;
+
+    int mode = int(uStrobeMode + 0.5);
+    if(mode == 0){                       /* hard white hit */
+      base = mix(base, uStrobeCol, amt);
+    } else if(mode == 1){                /* colour wash */
+      base = mix(base, uStrobeCol*1.15, amt*0.92);
+      base += uStrobeCol * amt * 0.25;
+    } else if(mode == 2){                /* invert */
+      base = mix(base, 1.0 - base, amt);
+    } else {                             /* mixed: colour on even, invert on odd */
+      float flip = mod(floor(uPhase*rate), 2.0);
+      vec3 v = (flip > 0.5) ? (1.0 - base) : uStrobeCol;
+      base = mix(base, v, amt);
+    }
+
+    /* the black gap between flashes */
+    float dark = (1.0 - lit) * uStrobeBlack * uStrobe;
+    base *= (1.0 - dark);
+    /* hard threshold gives the flicker a digital, cut-to-black edge */
+    base = mix(base, floor(base*6.0)/6.0, uStrobe*0.35);
+  }
+
+  /* reduced-flash soft-clips highlights and tames strobe depth. Safety always
+     wins over the effect, even when a preset asks for the maximum. */
+  if(uFlash > 0.001){
+    base = base/(1.0 + uFlash*max(base-0.72,0.0)*1.6);
+    base = mix(base, uStrobeCol*(1.0-uStrobeBlack), uStrobe*uFlash*0.55);
+  }
   base = clamp(base, 0.0, 1.0);
 
   outC = vec4(base, 1.0);
@@ -1657,6 +1738,7 @@ void main(){
       state.waveInterf > 0.002 || state.chromaSplit > 0.002 || state.posterize > 0.002 ||
       state.scanline > 0.002 || state.halation > 0.002 || state.invert ||
       state.colorCycle > 0.002 || state.lasers > 0.002 || state.rings > 0.002 ||
+      state.strobe > 0.002 ||
       state.gridLines > 0.002 || state.bursts > 0.002
     ));
     /* geometry also works without trance mode, but then needs a compositor path */
@@ -1797,6 +1879,7 @@ void main(){
     gl.uniform1f(C.uTypeForce,  tf * (0.5 + state.psyType*1.2));
     gl.uniform1f(C.uHueShift,   state.hueShift);
     gl.uniform1f(C.uContrast,   state.contrast);
+    gl.uniform1f(C.uTextOutline, state.textOutline);
     gl.uniform1f(C.uWaveI,      postOn ? state.waveInterf : 0.0);
 
     /* ---- CURSOR INTERACTION uniforms ---- */
@@ -1909,6 +1992,16 @@ void main(){
       gl.uniform3fv(Q.uColPink, pink);
       gl.uniform3fv(Q.uColAccent, accent);
       gl.uniform1f(Q.uFlash, state.reducedFlash ? 1 : 0);
+      /* reduced-flash caps the strobe rather than letting a preset override it */
+      const strobeCap = state.reducedFlash ? 0.22 : 1;
+      gl.uniform1f(Q.uStrobe, clamp(state.strobe*strobeCap, 0, 1));
+      gl.uniform1f(Q.uStrobeRate, state.strobeRate);
+      gl.uniform1f(Q.uStrobeBlack, state.strobeBlack);
+      gl.uniform1f(Q.uStrobeHold, clamp(state.strobeHold, 0.04, 0.95));
+      gl.uniform1f(Q.uStrobeMode,
+        state.strobeMode === 'colour' ? 1 : state.strobeMode === 'invert' ? 2
+        : state.strobeMode === 'mixed' ? 3 : 0);
+      gl.uniform3fv(Q.uStrobeCol, hexToLinear(state.strobeColor));
       gl.drawArrays(gl.TRIANGLES,0,3);
 
       // blit the result to the visible canvas

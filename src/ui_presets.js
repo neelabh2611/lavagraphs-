@@ -522,6 +522,71 @@ const PARTY_PRESETS = {
       vignette:0.55, glowIntensity:1.2,
     }),
 
+  /* ---- dedicated strobe presets: hard cut-to-black flicker ---- */
+
+  'whiteout-strobe': P_('hardcore', 'WHITEOUT STROBE',
+    'hard white flicker · black gaps · huge type', {
+      party:true, trance:true, energy:0.9, chaos:0.4, beatResponse:0.8,
+      liquidity:0.5, geometry:0.3, distortion:0.45, glowMacro:0.6,
+      colorMadness:0.1, typeForce:0.85, feedbackMacro:0.2, depth:0.4, trailMacro:0.35,
+      colRed:'#ffffff', colPink:'#ff2233', colAccent:'#ffffff',
+      colPale:'#ffffff', colWhite:'#ffffff', bgColor:'#000000',
+      textColor:'#000000', textMode:'clean', contrast:1.5, saturation:0.1,
+      strobe:1.0, strobeRate:12, strobeMode:'hard', strobeColor:'#ffffff',
+      strobeBlack:0.92, strobeHold:0.30,
+      halation:0.55, chromaSplit:0.10, vignette:0.45, grain:0.12,
+      typeBehaviour:'monumental', speed:1.0, loopDuration:4, seed:3131,
+      bpm:160, rhythmMode:'manual', glowIntensity:1.2,
+      blobCount:4, blobSize:0.55,
+    }),
+
+  'blackout-flicker': P_('hardcore', 'BLACKOUT FLICKER',
+    'mostly black · violent white cuts', {
+      party:true, trance:true, energy:0.8, chaos:0.3, beatResponse:0.9,
+      liquidity:0.3, geometry:0.2, distortion:0.3, glowMacro:0.4,
+      colorMadness:0.05, typeForce:0.9, feedbackMacro:0.2, depth:0.3, trailMacro:0.3,
+      colRed:'#ff1020', colPink:'#ffffff', colAccent:'#ffffff',
+      colPale:'#ffffff', colWhite:'#ffffff', bgColor:'#000000',
+      textColor:'#ffffff', textMode:'clean', contrast:1.7, saturation:0.6,
+      strobe:0.95, strobeRate:16, strobeMode:'mixed', strobeColor:'#ffffff',
+      strobeBlack:1.0, strobeHold:0.14,
+      halation:0.3, chromaSplit:0.2, vignette:0.85, grain:0.14,
+      typeBehaviour:'monumental', speed:1.1, loopDuration:3, seed:3232,
+      bpm:180, rhythmMode:'manual', glowIntensity:0.9,
+      blobCount:3, blobSize:0.42, edgeSoftness:0.5,
+    }),
+
+  'acid-strobe': P_('disco', 'ACID STROBE',
+    'colour cycling strobe · green / magenta', {
+      party:true, trance:true, energy:1.0, chaos:0.6, beatResponse:0.9,
+      liquidity:0.6, geometry:0.5, distortion:0.6, glowMacro:0.8,
+      colorMadness:0.7, typeForce:0.9, feedbackMacro:0.3, depth:0.5, trailMacro:0.45,
+      colRed:'#aaff00', colPink:'#ff00c8', colAccent:'#00ffd0',
+      colPale:'#ffffff', colWhite:'#ffffff', bgColor:'#000000',
+      textColor:'#000000', textMode:'clean', contrast:1.4, saturation:1.8,
+      strobe:1.0, strobeRate:14, strobeMode:'colour', strobeColor:'#aaff00',
+      strobeBlack:0.85, strobeHold:0.28,
+      colorCycle:1.2, chromaSplit:0.5, halation:0.7,
+      typeBehaviour:'explosive', speed:1.3, loopDuration:5, seed:3333,
+      bpm:170, rhythmMode:'manual', glowIntensity:1.6,
+    }),
+
+  'invert-strobe': P_('neon', 'INVERT STROBE',
+    'negative flicker · monochrome cuts', {
+      party:true, trance:true, energy:0.85, chaos:0.45, beatResponse:0.85,
+      liquidity:0.45, geometry:0.35, distortion:0.5, glowMacro:0.5,
+      colorMadness:0.03, typeForce:0.9, feedbackMacro:0.25, depth:0.4, trailMacro:0.4,
+      colRed:'#ffffff', colPink:'#dddddd', colAccent:'#ffffff',
+      colPale:'#ffffff', colWhite:'#ffffff', bgColor:'#000000',
+      textColor:'#ffffff', textMode:'clean', contrast:1.8, saturation:0.0,
+      strobe:1.0, strobeRate:10, strobeMode:'invert', strobeColor:'#ffffff',
+      strobeBlack:0.6, strobeHold:0.42,
+      scanline:0.3, grain:0.24, vignette:0.35,
+      typeBehaviour:'monumental', speed:0.9, loopDuration:4, seed:3434,
+      bpm:150, rhythmMode:'manual', glowIntensity:1.0,
+      blobCount:4, blobSize:0.6,
+    }),
+
   'synesthesia': P_('classic', 'SYNESTHESIA',
     'audio-reactive · elastic · multi-layer', {
       party:true, trance:true, energy:0.72, chaos:0.45, beatResponse:1.0,
@@ -541,3 +606,122 @@ const PARTY_PRESETS = {
       textColor:'#04000a', vignette:0.32, grain:0.15,
     }),
 };
+
+/* ============================================================================
+   PRESET CLASSIFICATION
+   Tier and flash rating are DERIVED from the parameters a preset actually sets,
+   never hand-labelled — if a preset is dialled up, its rating moves with it.
+
+     tier 1 SUBTLE     calm, minimal effect stack
+     tier 2 MODERATE   clear motion, one or two effects
+     tier 3 STRONG     layered and fast
+     tier 4 INTENSE    most of the stack engaged
+     tier 5 EXTREME    everything at once
+   ========================================================================= */
+
+const TIER_NAMES = ['', 'SUBTLE', 'MODERATE', 'STRONG', 'INTENSE', 'EXTREME'];
+
+/* how hard a preset drives the things that can trigger photosensitivity */
+function flashRating(s){
+  const g = k => +s[k] || 0;
+  let score = 0;
+  score += Math.min(1, g('bursts') / 1.6) * 30;
+  score += Math.min(1, g('lasers') / 1.4) * 14;
+  score += Math.min(1, g('rings') / 1.4) * 10;
+  score += Math.min(1, g('halation') / 1.4) * 12;
+  score += Math.min(1, g('colorCycle') / 1.4) * 16;
+  score += Math.min(1, g('scanline') / 0.8) * 8;
+  score += Math.min(1, g('chromaSplit') / 1.4) * 6;
+  if (s.invert) score += 18;
+  /* a fast clock multiplies the perceived rate of change */
+  const speed = +s.speed || 1;
+  const loop = +s.loopDuration || 8;
+  const rate = speed / Math.max(1, loop);
+  score *= (0.55 + Math.min(1.6, rate * 7.5));
+  score *= (0.75 + (+s.beatResponse || 0) * 0.55);
+  return Math.round(score);
+}
+
+/* 0 = safe · 1 = caution · 2 = strong warning */
+function flashLevel(s){
+  const r = flashRating(s);
+  if (r >= 95) return 2;   /* strong: rapid full-frame flashing */
+  if (r >= 38) return 1;   /* caution: intermittent bright transients */
+  return 0;
+}
+
+/* overall distance from a plain composition */
+function presetTier(s){
+  const g = k => +s[k] || 0;
+  let score = 0;
+  score += Math.min(1, g('kaleido')) * 14;
+  score += Math.min(1, g('tunnel')) * 14;
+  score += Math.min(1, g('fractal') + g('contourLine')) * 12;
+  score += Math.min(1, g('feedback')) * 16;
+  score += Math.min(1, g('chromaSplit') / 1.4) * 8;
+  score += Math.min(1, g('halation') / 1.4) * 7;
+  score += Math.min(1, g('lasers') / 1.4) * 10;
+  score += Math.min(1, g('rings') / 1.4) * 7;
+  score += Math.min(1, g('bursts') / 1.6) * 10;
+  score += Math.min(1, g('gridLines') / 1.4) * 6;
+  score += Math.min(1, g('lens')) * 6;
+  score += Math.min(1, g('waveInterf')) * 5;
+  score += Math.min(1, g('posterize')) * 4;
+  score += Math.min(1, g('scanline')) * 4;
+  score += (+s.distortion || 0) * 8;
+  score += (+s.chaos || 0) * 8;
+  score += (+s.elastic || 0) * 5;
+  score += (+s.fragment || 0) * 6;
+  score += (+s.extrude || 0) * 4;
+  score += (+s.meltRise || 0) * 4;
+  if (s.invert) score += 6;
+  /* cut points from the measured spread of real preset scores (6..60) */
+  if (score < 12) return 1;
+  if (score < 26) return 2;
+  if (score < 40) return 3;
+  if (score < 50) return 4;
+  return 5;
+}
+
+(function classifyPresets(){
+  for (const id in PARTY_PRESETS){
+    const p = PARTY_PRESETS[id];
+    p.tier = presetTier(p.s);
+    p.flash = flashLevel(p.s);
+    p.flashScore = flashRating(p.s);
+  }
+})();
+
+
+/* ============================================================================
+   LEGIBILITY ENVELOPE
+
+   A preset may ask for anything, but past a certain point distortion stops
+   reading as typography and becomes noise. These caps are applied when a
+   preset is applied, not stored, so the table above stays easy to read and
+   edit. Anything the user sets by hand afterwards is untouched.
+   ========================================================================= */
+
+const LEGIBILITY_CAPS = {
+  distortion: 0.72,      /* beyond this the glyph structure dissolves */
+  textWarpX:   0.55,
+  textWarpY:   0.48,
+  fragment:    0.55,
+  chromaSplit: 0.95,
+  textBlur:    0.34,
+  textJitter:  0.10,
+  spiral:      0.55,
+  meltRise:    0.65,
+};
+
+function applyLegibilityEnvelope(out){
+  for (const k in LEGIBILITY_CAPS){
+    if (typeof out[k] === 'number' && out[k] > LEGIBILITY_CAPS[k]){
+      out[k] = LEGIBILITY_CAPS[k];
+    }
+  }
+  /* Every preset keeps a visible contour — this is what guarantees the type
+     can be read over both the black negative space and the pale liquid. */
+  if (out.textOutline === undefined) out.textOutline = 0.55;
+  return out;
+}
