@@ -739,7 +739,7 @@ uniform vec2  uRes;
 uniform vec2  uTextRes;
 uniform float uAspect;
 
-uniform vec3  uColRed, uColPink, uColPale, uColWhite, uColText;
+uniform vec3  uColRed, uColPink, uColPale, uColWhite, uColText, uColBg;
 uniform float uRedI, uPinkI, uWhiteI, uBlack;
 uniform float uGlowI, uGlowR, uBloomT;
 uniform float uChroma, uRGBSep;
@@ -971,7 +971,7 @@ void main(){
        2. a thick saturated red ring hugging the silhouette
        3. a pale / white molten core
   */
-  vec3 col = vec3(0.0);
+  vec3 col = uColBg;
 
   vec3 redM   = uColRed  * uRedI;
   vec3 pinkM  = uColPink * uPinkI;
@@ -1678,7 +1678,7 @@ void main(){
     gl.uniform1f(U(P.field,'uWarp'), state.warpAmount*1.25*MX.distortion);
     gl.uniform2f(U(P.field,'uLiquidOff'), state.liquidX*0.9, -state.liquidY*0.9 - state.liquidPosY*0.9);
     gl.uniform1f(U(P.field,'uLiquidScale'), state.liquidScale);
-    gl.uniform1i(U(P.field,'uOct'), Math.round(state.fbmOctaves));
+    gl.uniform1i(U(P.field,'uOct'), Math.round(clamp(state.fbmOctaves + (state.liquidComplexity-3)*0.7, 1, 6)));
     gl.uniform1f(U(P.field,'uRandom'), state.randomness);
     gl.uniform1f(U(P.field,'uIntensity'), state.globalIntensity);
     gl.uniform1f(U(P.field,'uSoft'), 0.004 + state.edgeSoftness*0.19);
@@ -1740,11 +1740,12 @@ void main(){
     gl.uniform3fv(C.uColPale, pale);
     gl.uniform3fv(C.uColWhite, wht);
     gl.uniform3fv(C.uColText, txt);
+    gl.uniform3fv(C.uColBg, hexToLinear(state.bgColor));
     gl.uniform1f(C.uRedI, state.redIntensity);
     gl.uniform1f(C.uPinkI, state.pinkIntensity);
     gl.uniform1f(C.uWhiteI, state.whiteIntensity);
     gl.uniform1f(C.uBlack, state.blackLevel);
-    gl.uniform1f(C.uGlowI, state.glowIntensity*MX.glow);
+    gl.uniform1f(C.uGlowI, state.glowIntensity*MX.glow*(1.0+Beat.treble*state.trebleAmt*0.7));
     gl.uniform1f(C.uGlowR, state.glowRadius);
     gl.uniform1f(C.uBloomT, state.bloomThreshold);
     gl.uniform1f(C.uChroma, state.chromatic);
@@ -1781,17 +1782,38 @@ void main(){
     gl.uniform1f(C.uElastic,    state.elastic  * (1.0 + beat*state.beatResponse*0.8));
     gl.uniform1f(C.uFragment,   state.fragment * (0.55 + tf*0.9));
     gl.uniform1f(C.uPersp,      state.perspective);
-    gl.uniform1f(C.uSpiral,     state.spiral);
+    gl.uniform1f(C.uSpiral,     state.spiral + state.psyType*state.psyTypeSpiral);
     gl.uniform1f(C.uMelt,       state.meltRise * (0.5 + tf));
     gl.uniform1f(C.uExtrude,    state.extrude);
     gl.uniform1f(C.uNeon,       state.neonOutline);
     gl.uniform1f(C.uLineStagger,state.lineStagger);
     gl.uniform1f(C.uCharAnim,   state.charAnim);
     gl.uniform1f(C.uGlitch,     state.typeBehaviour === 'glitch' ? 0.35 + state.chaos*0.9 : state.chaos*0.18);
-    gl.uniform1f(C.uTypeForce,  tf);
+    gl.uniform1f(C.uTypeForce,  tf * (0.5 + state.psyType*1.2));
     gl.uniform1f(C.uHueShift,   state.hueShift);
     gl.uniform1f(C.uContrast,   state.contrast);
     gl.uniform1f(C.uWaveI,      postOn ? state.waveInterf : 0.0);
+
+    /* ---- CURSOR INTERACTION uniforms ---- */
+    const cCol = hexToLinear(state.cursorTrailColor);
+    const hoverAmt = state.cursorOn
+      ? (state.cursorMode === 'drag' ? (Cursor.down ? Cursor.inside : 0.06) : Cursor.inside)
+      : 0;
+    gl.uniform2f(C.uCursor, Cursor.x, Cursor.y);
+    gl.uniform2f(C.uCursorVel, Cursor.vx, Cursor.vy);
+    gl.uniform1f(C.uCursorOn, state.cursorOn ? 1 : 0);
+    gl.uniform1f(C.uCursorForce, state.cursorForce * (0.4 + hoverAmt*0.9));
+    gl.uniform1f(C.uCursorRadius, state.cursorRadius*1.6);
+    gl.uniform1f(C.uCursorLiquid, state.cursorLiquid ? 1 : 0);
+    gl.uniform1f(C.uCursorGravity, state.cursorGravity ? 1 : 0);
+    gl.uniform1f(C.uCursorType, state.cursorType ? 1 : 0);
+    gl.uniform1f(C.uCursorPortal, (state.cursorPortal || state.cursorBrush) ? 1 : 0);
+    gl.uniform1f(C.uCursorBrush, state.cursorBrush ? 1 : 0);
+    gl.uniform3fv(C.uCursorCol, cCol);
+    gl.uniform1f(C.uCursorGlow, state.cursorGlow);
+    gl.uniform1f(C.uHoverAmt, hoverAmt);
+    gl.uniform1f(C.uPortalDepth, state.cursorPortalDepth);
+    gl.uniform1f(C.uPortalRot, state.cursorPortalRot);
     gl.drawArrays(gl.TRIANGLES,0,3);
 
     /* ================= PASS 5 : geometry / laser layer ================= */
@@ -1815,11 +1837,11 @@ void main(){
       gl.uniform1f(G.uRingThick, state.ringThickness);
       gl.uniform1f(G.uGrid, clamp(state.gridLines*GM.geometry, 0, 1.6));
       gl.uniform1f(G.uGridScale, state.gridScale);
-      gl.uniform1f(G.uBursts, clamp(state.bursts*(GM.geometry+GM.beat*state.beatAmt*Beat.value), 0, 1.8));
+      gl.uniform1f(G.uBursts, clamp(state.bursts*(GM.geometry + GM.beat*state.beatAmt*Beat.value*state.impactStrength), 0, 1.8) * (1.0 - state.buildLength*0.25));
       gl.uniform3fv(G.uColAccent, accent);
       gl.uniform3fv(G.uColRed, red);
       gl.uniform3fv(G.uColPink, pink);
-      gl.uniform1f(G.uEnergy, state.energy*(1.0 + Beat.value*state.beatResponse*0.55)*GM.energy/1.2);
+      gl.uniform1f(G.uEnergy, state.energy*(1.0 + Beat.value*state.beatResponse*0.55)*(1.0+Beat.mid*state.midAmt*0.6)*GM.energy/1.2);
       gl.uniform1f(G.uChaos, state.chaos);
       gl.uniform1f(G.uIntensity, state.globalIntensity);
       gl.uniform2f(G.uFocus, state.liquidX*0.20, -state.liquidY*0.20);
@@ -1873,7 +1895,7 @@ void main(){
       gl.uniform1f(Q.uScan, state.scanline);
       gl.uniform1f(Q.uHalation, clamp(state.halation*postMul.glow, 0, 1.6));
       gl.uniform1f(Q.uInvert, state.invert ? 1 : 0);
-      gl.uniform1f(Q.uHue, state.hueShift + state.colorCycle*TAU*phase*postMul.color);
+      gl.uniform1f(Q.uHue, state.hueShift + (state.hueCycle*TAU*phase + state.colorCycle*TAU*phase*(0.4+state.colorSpeed*1.6))*postMul.color);
       gl.uniform1f(Q.uSat, clamp(state.saturation*(0.75+postMul.color*0.55), 0, 3));
       gl.uniform1f(Q.uContrast, state.contrast);
       gl.uniform1f(Q.uGrain, state.grain);
@@ -2201,7 +2223,9 @@ const Animation = (() => {
 
   function advance(dt){
     if (paused) return;
-    rawTime += dt * state.speed;
+    /* reduce-motion is a global damper, not a per-effect setting */
+    const rm = state.reduceMotion ? 0.25 : 1;
+    rawTime += dt * state.speed * rm;
   }
 
   function sync(){

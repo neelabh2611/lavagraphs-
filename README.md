@@ -205,6 +205,8 @@ lavagraphs-/
 │   ├── ui_audio.js       audio analysis panel, cursor panel
 │   └── build.js          inlines src/* into dist/index.html
 ├── docs/
+│   ├── ARCHITECTURE.md   module map, pipeline internals, determinism
+│   └── PRESETS.md        the full preset gallery
 ├── LICENSE
 └── README.md
 ```
@@ -212,12 +214,12 @@ lavagraphs-/
 ### Building
 
 ```bash
-cd src
-node build.js
+node src/build.js
 ```
 
 `build.js` inlines `core.js` and the five UI modules into `template.html` at the
-`/*~~CORE~~*/` and `/*~~UI~~*/` markers and writes `dist/index.html`. The two
+`/*~~CORE~~*/` and `/*~~UI~~*/` markers and writes `dist/index.html`. It takes no
+arguments and needs nothing but Node. The two
 scripts are wrapped in separate IIFEs because both would otherwise declare
 `const state` at global scope.
 
