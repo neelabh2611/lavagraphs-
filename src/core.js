@@ -14,9 +14,9 @@ const DEFAULTS = {
   fontSize: 240,
   fontWeight: 800,
   tracking: -0.035,
-  leading: 1.00,
+  leading: 1.06,
   align: 'center',
-  textWidth: 94,
+  textWidth: 96,
   textScale: 1.00,
   textRotate: 0,
   textX: 0,
@@ -25,7 +25,7 @@ const DEFAULTS = {
   textOpacity: 1,
   autoFit: true,
   packed: true,
-  packedAmount: 0.04,
+  packedAmount: 0.0,
   justify: true,
   crop: 0.06,
 
@@ -33,10 +33,10 @@ const DEFAULTS = {
   distortOn: true,
   textMode: 'molten',
   textWarpX: 0.42,
-  textWarpY: 0.34,
+  textWarpY: 0.26,
   textRipple: 0.22,
   textRippleFreq: 2.6,
-  textBulge: 0.14,
+  textBulge: 0.10,
   textSpeed: 0.60,
   textAmp: 0.55,
   textScaleOsc: 0.10,
@@ -393,10 +393,10 @@ const TextRenderer = (() => {
       if (state.justify && ln.trim().length){
         const w = measureSpaced(ctx, ln, ls);
         if (w > 1) lineScale = usableW / w;
-        /* Per-line stretch is what makes the stacked poster look fill its
-           column, but a large factor visibly shears the glyphs. Keep it
-           modest and let the auto-fit pass do the heavy lifting. */
-        lineScale = Math.min(lineScale, 1.34);
+        /* Per-line stretch is what fills the column in a wide frame, where the
+           six-line block is height-limited. 1.95 fills the width while still
+           reading as stretched type rather than sheared glyphs. */
+        lineScale = Math.min(lineScale, 1.95);
       }
       if (lineScale !== 1){
         const w0 = measureSpaced(ctx, ln, ls);
