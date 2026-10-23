@@ -133,10 +133,18 @@ attraction and typography push. Hover in/out ramps the whole field smoothly.
 Touch drag is supported as a pointer equivalent.
 
 ### Presets
-Thirty presets across five groups — hardcore/techno, liquid, neon/cyber,
+Thirty-four presets across five groups — hardcore/techno, liquid, neon/cyber,
 disco/colour, and the classic set. Each configures real parameters across
 typography, liquid, geometry, motion, colour and post-processing, and each has
 its own motion personality rather than a swapped palette.
+
+Every preset carries a **tier** (1 SUBTLE → 5 EXTREME) and a **flash rating**,
+both *derived* from the parameters it sets rather than hand-labelled — dial a
+preset up and its rating moves with it. The browser groups by tier and filters
+by BASIC / WILD / FLASH / SAFE, with a photosensitivity banner on the flash view.
+
+A **legibility envelope** clamps distortion, fragmentation, chroma and blur when
+a preset is applied, so no preset can render type that has stopped being type.
 
 **Thumbnails are rendered by the actual engine.** `Renderer.renderThumb()`
 temporarily overrides state, renders the real pipeline at 108 × 108, reads the
@@ -164,8 +172,15 @@ Imported files are validated key-by-key against the known schema with type
 checks, hex validation for colours and range clamps — a hostile or corrupt file
 cannot wedge the renderer.
 
+### Strobe
+A real hard-cut flash engine in the post pass: integer-rate gate on the loop
+phase, duty-cycle hold, black gap, and four modes (white / colour / invert /
+mixed). Derived from `uPhase`, so exported frames strobe identically to the
+preview.
+
 ### Safety
-Reduced-flashing mode soft-clips bright transients. Reduce-motion damps animated
+Reduced-flashing mode soft-clips bright transients and **caps strobe depth**
+regardless of what a preset asks for. Reduce-motion damps animated
 bands. `Shift+P` or `Esc` freezes immediately.
 
 ---
@@ -180,12 +195,13 @@ bands. `Shift+P` or `Esc` freezes immediately.
 | `G` | Grid |
 | `'` | Safe guides |
 | `H` | Presentation mode |
-| `F` | Fullscreen |
+| `F` | Fullscreen + presentation mode |
 | `E` | Export |
 | `←` `→` | Scrub timeline |
 | `Ctrl/Cmd+Z` | Undo |
 | `Ctrl/Cmd+Shift+Z` | Redo |
-| `Esc` | Close modal / blur field |
+| `T` `Y` `U` | Trance / Party / Audio |
+| `Esc` | Close modal · exit presentation |
 
 ---
 
