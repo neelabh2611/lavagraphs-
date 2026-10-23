@@ -811,6 +811,10 @@ void main(){
   float A = uPhase*TAU;
   float ts = uTextSpeed;
 
+  /* one-pixel-ish sample radius for every contour operation below — declared
+     here because both the glow band and the outline need it */
+  float oe = 0.0014 + 0.0048*uTextBlur;
+
   /* ================= CURSOR FIELD =================
      The pointer is a real force in composition space. Everything downstream
      (type warp, liquid sampling) reads from these two vectors, so the whole
@@ -1035,7 +1039,15 @@ void main(){
   /* glow around the letterforms (blurred text minus sharp text) */
   /* band = where the blurred type exists but the sharp type does not.
      clamp(tg - ta) guarantees it is zero inside a solid letterform. */
-  float band = clamp(tg - ta, 0.0, 1.0);
+  /* tg is a blurred copy of the whole text block, so between two stacked lines
+     it is high while ta is low — that is a line gap, not a letter edge. Weight
+     the band by how much sharp glyph surrounds it horizontally so the gap
+     between lines stops glowing like an outline. */
+  float bandV = clamp(tg - ta, 0.0, 1.0);
+  float lft = textAt(tuv + vec2(-oe*2.2, 0.0), lodBase);
+  float rgt = textAt(tuv + vec2( oe*2.2, 0.0), lodBase);
+  float side = max(lft, rgt);
+  float band = bandV * clamp(side*1.35, 0.0, 1.0);
   col += redM  * band * uEdgeGlow * 2.10;
   col += pinkM * band * uEdgeGlow * 0.95;
 
@@ -1079,11 +1091,15 @@ void main(){
   float lum = dot(tc, vec3(0.299,0.587,0.114));
   float isDark = step(lum, 0.42);
 
-  float oe = 0.0014 + 0.0048*uTextBlur;
   float g1 = textAt(tuv + vec2( oe, 0.0), lodBase);
   float g2 = textAt(tuv + vec2(-oe, 0.0), lodBase);
-  float g3 = textAt(tuv + vec2(0.0,  oe), lodBase);
-  float g4 = textAt(tuv + vec2(0.0, -oe), lodBase);
+  /* The vertical samples are deliberately shorter than the horizontal ones:
+     stacked lines are close together, and a symmetric ring reaches into the
+     line above and paints its contour underneath it, visually welding the two
+     lines together. */
+  float yoe = oe*0.42;
+  float g3 = textAt(tuv + vec2(0.0,  yoe), lodBase);
+  float g4 = textAt(tuv + vec2(0.0, -yoe), lodBase);
   float outlineRing = clamp(max(max(g1,g2),max(g3,g4)) - ta, 0.0, 1.0) * uTextOutline;
 
   /* the outline colour is the inverse of the type colour, so contrast is
