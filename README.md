@@ -5,11 +5,23 @@ the GPU melts it into liquid chrome, lava, lasers and fractal tunnels, and the
 result reacts to audio, to your cursor, and to a bank of 30 presets.
 
 No build step to run it. No backend, no accounts, no paid APIs. Open
-`dist/index.html` and it works.
+`index.html` and it works.
 
 ```
-open dist/index.html
+open index.html            # straight from disk
+npm start                  # or serve it, exactly as Pages will
 ```
+
+### Hosting
+
+The repo root *is* the site. `index.html` is the built app, `.nojekyll` stops
+GitHub Pages running Jekyll over it, and `.github/workflows/pages.yml` rebuilds
+and deploys on every push to `main`. To publish: **Settings → Pages → Source:
+GitHub Actions**, then push. No configuration or build step on the server.
+
+The bundle is entirely self-contained — no external scripts, fonts or CDNs, and
+no absolute paths — so it also works from a subpath, a file share, or a USB
+stick.
 
 ---
 
@@ -209,8 +221,12 @@ bands. `Shift+P` or `Esc` freezes immediately.
 
 ```
 lavagraphs-/
-├── dist/
-│   └── index.html        ← built, self-contained, open this
+├── index.html            ← built app (GitHub Pages entry point)
+├── dist/index.html       ← same file, kept as the tidy artefact
+├── package.json
+├── scripts/serve.js      zero-dependency static server
+├── .github/workflows/pages.yml
+├── .nojekyll
 ├── src/
 │   ├── template.html     HTML shell + all CSS
 │   ├── core.js           state, text raster, WebGL2 pipeline, animation, beat
