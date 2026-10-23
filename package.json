@@ -2,9 +2,10 @@
   "name": "trance-lab",
   "version": "1.0.0",
   "private": true,
-  "description": "Kinetic typography and liquid lava motion graphics instrument — WebGL2, zero dependencies",
+  "description": "Kinetic typography and liquid lava motion graphics instrument \u2014 WebGL2, zero dependencies",
   "scripts": {
-    "build": "node src/build.js",
+    "build": "node src/check.js && node src/build.js",
+    "check": "node src/check.js",
     "start": "node src/build.js && node scripts/serve.js",
     "serve": "node scripts/serve.js"
   },
